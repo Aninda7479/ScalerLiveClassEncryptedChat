@@ -1,0 +1,308 @@
+/* Scaler Encrypted Chat - Clean, High-Contrast & Adaptive Stylesheet */
+
+.chat-input__controls {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.scaler-enc-controls-wrapper {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-left: auto !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.scaler-enc-pill-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 3px 10px !important;
+  border-radius: 14px !important;
+  background: rgba(100, 116, 139, 0.15) !important;
+  color: inherit !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  border: 1px solid rgba(100, 116, 139, 0.3) !important;
+  transition: all 0.15s ease !important;
+  line-height: 1.2 !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.scaler-enc-pill-btn:hover {
+  background: rgba(100, 116, 139, 0.25) !important;
+  border-color: rgba(100, 116, 139, 0.45) !important;
+}
+
+.scaler-enc-color-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+}
+
+#scaler-enc-current-name {
+  white-space: nowrap !important;
+  display: inline-block !important;
+}
+
+/* Floating Dropdown attached directly to body with guaranteed solid contrast */
+#scaler-enc-floating-menu {
+  position: fixed !important;
+  min-width: 190px !important;
+  width: 190px !important;
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.6), 0 6px 12px -2px rgba(0, 0, 0, 0.4) !important;
+  padding: 6px !important;
+  z-index: 2147483647 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 12px !important;
+  box-sizing: border-box !important;
+  display: none;
+}
+
+#scaler-enc-floating-menu * {
+  box-sizing: border-box !important;
+}
+
+.scaler-enc-menu-header {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  padding: 4px 8px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.scaler-enc-menu-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 7px 9px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: background 0.12s !important;
+  color: #f1f5f9 !important;
+  background: transparent !important;
+  margin-bottom: 2px !important;
+}
+
+.scaler-enc-menu-item:hover {
+  background: #1e293b !important;
+  color: #ffffff !important;
+}
+
+.scaler-enc-menu-item.active {
+  background: rgba(56, 189, 248, 0.18) !important;
+  color: #38bdf8 !important;
+  font-weight: 600 !important;
+}
+
+.scaler-enc-menu-divider {
+  height: 1px !important;
+  background: #334155 !important;
+  margin: 5px 0 !important;
+}
+
+.scaler-enc-menu-btn-settings {
+  color: #38bdf8 !important;
+  font-weight: 600 !important;
+}
+
+/* Lock Send Button */
+.scaler-enc-lock-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(2, 132, 199, 0.35) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  margin-left: 4px !important;
+  padding: 0 !important;
+}
+
+.scaler-enc-lock-btn:hover {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+  transform: scale(1.05) !important;
+}
+
+.scaler-enc-lock-btn:active {
+  transform: scale(0.96) !important;
+}
+
+/* Decrypted Message Inside Bubble */
+.scaler-enc-clean-msg {
+  display: block !important;
+  margin: 2px 0 !important;
+}
+
+.scaler-enc-badge-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-bottom: 3px !important;
+}
+
+.scaler-enc-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 1px 7px !important;
+  border-radius: 10px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  line-height: 1.4 !important;
+}
+
+.scaler-enc-raw-toggle {
+  font-size: 9px !important;
+  opacity: 0.5 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: opacity 0.15s !important;
+}
+
+.scaler-enc-raw-toggle:hover {
+  opacity: 0.9 !important;
+  text-decoration: underline !important;
+}
+
+.scaler-enc-content {
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: inherit !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+.scaler-enc-raw-text {
+  margin-top: 4px !important;
+  padding: 4px 6px !important;
+  background: rgba(0, 0, 0, 0.08) !important;
+  border-radius: 4px !important;
+  font-family: monospace !important;
+  font-size: 10px !important;
+  color: inherit !important;
+  opacity: 0.75 !important;
+  word-break: break-all !important;
+}
+
+.scaler-enc-locked-msg {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+  color: #b45309 !important;
+  font-size: 11px !important;
+}
+
+.scaler-enc-unlock-link {
+  background: #d97706 !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 2px 6px !important;
+  border-radius: 3px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+/* Modal */
+.scaler-enc-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 2147483647 !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+.scaler-enc-modal {
+  background: #0f172a !important;
+  border: 1px solid #334155 !important;
+  border-radius: 12px !important;
+  width: 360px !important;
+  max-width: 92vw !important;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.scaler-enc-modal-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #1e293b !important;
+}
+
+.scaler-enc-modal-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  color: #38bdf8 !important;
+}
+
+.scaler-enc-modal-close {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+}
+
+.scaler-enc-modal-body {
+  padding: 14px 16px !important;
+}
+
+.scaler-enc-modal-card {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  margin-bottom: 6px !important;
+}
+
+.scaler-enc-modal-card.active {
+  border-color: #38bdf8 !important;
+  background: #17253b !important;
+}
+
+.scaler-enc-key-box {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  margin-top: 5px !important;
+}

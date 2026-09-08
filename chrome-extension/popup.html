@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scaler Encrypted Chat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      width: 360px;
+      margin: 0;
+      padding: 14px;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-icon {
+      width: 22px;
+      height: 22px;
+      display: block;
+      filter: drop-shadow(0 2px 5px rgba(2, 132, 199, 0.4));
+    }
+    .version {
+      font-size: 10px;
+      color: #64748b;
+      background: #1e293b;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+      margin: 12px 0 6px 0;
+    }
+    .profile-list {
+      max-height: 220px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .profile-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 10px;
+      transition: all 0.15s ease;
+    }
+    .profile-card.active {
+      border-color: #38bdf8;
+      background: #17253b;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3);
+    }
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .profile-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+    .fp-badge {
+      font-size: 10px;
+      color: #94a3b8;
+      font-family: monospace;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .active-tag {
+      font-size: 10px;
+      color: #38bdf8;
+      font-weight: 700;
+      padding: 2px 6px;
+      background: rgba(56, 189, 248, 0.12);
+      border-radius: 4px;
+    }
+    .btn-sm {
+      background: #334155;
+      color: #e2e8f0;
+      border: none;
+      padding: 3px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .btn-sm:hover {
+      background: #475569;
+      color: #fff;
+    }
+    .btn-del {
+      color: #ef4444;
+      padding: 3px 6px;
+    }
+    .btn-del:hover {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+
+    /* Key View Row */
+    .key-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 11px;
+    }
+    .key-label {
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .key-display {
+      font-family: monospace;
+      color: #cbd5e1;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 4px;
+      border-radius: 3px;
+      line-height: 1;
+      transition: all 0.12s;
+    }
+    .icon-btn:hover {
+      color: #38bdf8;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Add Form */
+    .input {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #fff;
+      padding: 6px 9px;
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+    .input:focus {
+      border-color: #38bdf8;
+      outline: none;
+    }
+    .color-pickers {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .color-opt {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.1s ease;
+    }
+    .color-opt:hover {
+      transform: scale(1.15);
+    }
+    .color-opt.selected {
+      border-color: #fff;
+      transform: scale(1.15);
+    }
+    .btn-main {
+      width: 100%;
+      padding: 7px;
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-main:hover {
+      background: #0369a1;
+    }
+    .footer {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      gap: 6px;
+    }
+    .btn-secondary {
+      flex: 1;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 6px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover {
+      background: #334155;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">
+      <img src="icons/logo.svg" alt="Logo" class="logo-icon">
+      Scaler Encrypted Chat
+    </div>
+    <span class="version">v1.3</span>
+  </div>
+
+  <div class="section-title">Key Profiles</div>
+  <div class="profile-list" id="profile-list"></div>
+
+  <div class="section-title">Add New Key</div>
+  <input type="text" id="new-name" class="input" placeholder="Profile Name (e.g. Arin, Squad)...">
+  <input type="password" id="new-key" class="input" placeholder="Secret Key / Passphrase...">
+  <div class="color-pickers" id="color-pickers"></div>
+  <button id="add-btn" class="btn-main">➕ Add Key Profile</button>
+
+  <div class="footer">
+    <button id="export-btn" class="btn-secondary">📋 Export</button>
+    <button id="import-btn" class="btn-secondary">📥 Import</button>
+  </div>
+  <div style="text-align: center; margin-top: 10px; font-size: 11px; color: #64748b;">
+    Developed by <a href="https://github.com/Aninda7479" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">Aninda</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

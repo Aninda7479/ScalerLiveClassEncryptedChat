@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Scaler Academy Encrypted Private Chat",
+  "version": "1.0.0",
+  "author": "Aninda",
+  "homepage_url": "https://github.com/Aninda7479",
+  "description": "End-to-End Encrypted Private Chat in Scaler Academy Classrooms. Support for multiple password profiles, one-click encryption, and live auto-decryption.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.scaler.com/*",
+    "file://*/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.scaler.com/*",
+        "file://*/*page.html*",
+        "file://*/*test-scaler-chat.html*"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

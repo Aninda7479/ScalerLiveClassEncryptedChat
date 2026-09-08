@@ -1,0 +1,5 @@
+*.zip
+page.html
+test-scaler-chat.html
+generate_logo.js
+render_svg_to_png.js

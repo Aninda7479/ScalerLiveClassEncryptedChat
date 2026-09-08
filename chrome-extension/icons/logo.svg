@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background / Shield Gradients -->
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#818cf8" stop-opacity="0.1"/>
+    </linearGradient>
+
+    <linearGradient id="shackleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="50%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+
+    <linearGradient id="lockBodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f1f5f9"/>
+    </linearGradient>
+
+    <linearGradient id="accentCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <!-- Filters for modern depth and glow -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0284c7" flood-opacity="0.3"/>
+    </filter>
+
+    <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+      <feFlood flood-color="#ffffff" flood-opacity="0.35"/>
+      <feComposite in2="shadowDiff" operator="in"/>
+      <feComposite in2="SourceGraphic" operator="over"/>
+    </filter>
+
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer Ambient Glow -->
+  <circle cx="256" cy="256" r="210" fill="url(#glowGrad)" filter="url(#dropShadow)" opacity="0.4"/>
+
+  <!-- Main Shield + Chat Bubble Unified Body -->
+  <path d="M 256,44
+           C 362,44 428,96 432,188
+           C 436,296 360,392 256,456
+           C 204,424 162,384 136,344
+           L 96,368
+           C 84,375 70,366 73,352
+           L 84,304
+           C 74,272 72,232 76,188
+           C 80,96 150,44 256,44 Z"
+        fill="url(#shieldGrad)"
+        filter="url(#dropShadow)"/>
+
+  <!-- Glossy Highlight / Bevel Rim -->
+  <path d="M 256,48
+           C 358,48 424,98 428,188
+           C 432,284 364,374 256,448
+           C 214,422 172,382 144,342
+           L 108,364
+           L 116,326
+           L 98,296
+           C 88,266 84,230 88,188
+           C 92,100 160,48 256,48 Z"
+        fill="none"
+        stroke="url(#glowGrad)"
+        stroke-width="4"
+        stroke-linecap="round"
+        opacity="0.75"/>
+
+  <!-- Subtle Internal Cyber Grid / Wave Lines -->
+  <path d="M 120,200 Q 256,240 392,200" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.12"/>
+  <path d="M 140,240 Q 256,280 372,240" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.08"/>
+  <path d="M 168,280 Q 256,320 344,280" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.06"/>
+
+  <!-- Padlock Shackle -->
+  <path d="M 200,210
+           L 200,166
+           C 200,135 225,110 256,110
+           C 287,110 312,135 312,166
+           L 312,210"
+        fill="none"
+        stroke="url(#shackleGrad)"
+        stroke-width="26"
+        stroke-linecap="round"
+        filter="url(#dropShadow)"/>
+
+  <!-- Shackle Inner Metallic Sheen -->
+  <path d="M 200,204
+           L 200,166
+           C 200,138 225,116 256,116
+           C 287,116 312,138 312,166
+           L 312,204"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="8"
+        stroke-linecap="round"
+        opacity="0.6"/>
+
+  <!-- Padlock Body (Rounded Sleek Capsule) -->
+  <rect x="172" y="196" width="168" height="136" rx="28" ry="28"
+        fill="url(#lockBodyGrad)"
+        filter="url(#dropShadow)"/>
+
+  <!-- Top Accent on Lock Body -->
+  <path d="M 194,204 L 318,204" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Keyhole & Cyber Beam Core -->
+  <circle cx="256" cy="248" r="18" fill="url(#accentCyan)" filter="url(#neonGlow)"/>
+  <path d="M 248,252 L 264,252 L 268,284 C 268,288 264,292 260,292 L 252,292 C 248,292 244,288 244,284 Z"
+        fill="url(#accentCyan)"/>
+
+  <!-- Circuit / Cryptographic Data Nodes -->
+  <!-- Left data node -->
+  <circle cx="218" cy="264" r="5" fill="#38bdf8" opacity="0.9"/>
+  <path d="M 223,264 L 244,264" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="2 2" opacity="0.8"/>
+
+  <!-- Right data node -->
+  <circle cx="294" cy="264" r="5" fill="#38bdf8" opacity="0.9"/>
+  <path d="M 268,264 L 289,264" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="2 2" opacity="0.8"/>
+
+  <!-- Security Sparkle / Gleam on Top Right -->
+  <path d="M 374,106
+           C 374,122 360,134 360,134
+           C 360,134 374,146 374,162
+           C 374,146 388,134 388,134
+           C 388,134 374,122 374,106 Z"
+        fill="#ffffff"
+        opacity="0.95"
+        filter="url(#neonGlow)"/>
+</svg>
