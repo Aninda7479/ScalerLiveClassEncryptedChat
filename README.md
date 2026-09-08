@@ -10,7 +10,7 @@
 
 ## ✨ Features
 
-- **Multi-Key Profile Management**: Create unlimited password profiles (e.g. *Squad Secret*, *Friend Bob*, *DSA Study Group*), assign custom color badges, and switch between them in 1-click.
+- **Multi-Key Profile Management**: Create unlimited password profiles (e.g. *SST*, *Friend Bob*, *DSA Study Group*), assign custom color badges, and switch between them in 1-click.
 - **Inspect & Copy Passphrases**: Toggle secret visibility (`👁️`) to verify passwords and copy them (`📋`) in 1 click to share with study partners.
 - **One-Click Encryption & Sending**: Dedicated **"🔒 Encrypt & Send"** button placed seamlessly beside Scaler's emoji picker. Fully integrates with Scaler's React input state.
 - **Clean, Native & Adaptive Design**: Lightweight pill selector with pinned right alignment, zero vertical layout shifting, and high-contrast styling resistant to classroom CSS themes.
@@ -47,8 +47,7 @@
 A complete offline test harness based on the real Scaler classroom HTML has been created:
 - Simply double-click or open [`test-scaler-chat.html`](./test-scaler-chat.html) in your browser.
 - Use the simulation toolbar at the top:
-  - 📥 **Simulate 'Squad Secret' Message**: Tests incoming message with default key `secret123`.
-  - 📥 **Simulate 'VIP Private' Message**: Tests incoming message with VIP key `scaler2026`.
+  - 📥 **Simulate 'SST' Message**: Tests incoming message with pre-given default key `SST2030@Aninda`.
   - 📥 **Simulate 'Unknown Key' Message**: Tests incoming locked message with unlock prompt.
 - Type any message in the chat box at the bottom right and click **"🔒 Encrypt & Send"**!
 

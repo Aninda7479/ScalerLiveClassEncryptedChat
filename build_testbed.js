@@ -49,8 +49,7 @@ const simulationScript = `
     <strong>Scaler Encrypted Chat Testbed</strong>
   </div>
   <span>|</span>
-  <button class="sim-btn" id="sim-squad-btn">📥 Simulate 'Squad Secret' Message</button>
-  <button class="sim-btn" id="sim-vip-btn">📥 Simulate 'VIP Private' Message</button>
+  <button class="sim-btn" id="sim-sst-btn">📥 Simulate 'SST' Message</button>
   <button class="sim-btn" id="sim-unknown-btn">📥 Simulate 'Unknown Key' Message</button>
   <span style="margin-left: auto; color: #94a3b8;">Type in chat box & click '🔒 Encrypt & Send'</span>
 </div>
@@ -102,16 +101,10 @@ const simulationScript = `
     }
 
     // Connect test simulation buttons
-    document.getElementById('sim-squad-btn').addEventListener('click', async () => {
-      // Squad secret key: 'secret123'
-      const enc = await window.scalerEncryptTextTest('Hey buddy, answer for Q4 is O(log N)!', 'secret123');
-      appendMockMessage('Rahul Sharma', enc, false);
-    });
-
-    document.getElementById('sim-vip-btn').addEventListener('click', async () => {
-      // VIP key: 'scaler2026'
-      const enc = await window.scalerEncryptTextTest('Meeting after class on Discord!', 'scaler2026');
-      appendMockMessage('Aninda (VIP)', enc, false);
+    document.getElementById('sim-sst-btn').addEventListener('click', async () => {
+      // SST key: 'SST2030@Aninda'
+      const enc = await window.scalerEncryptTextTest('Hey buddy, answer for Q4 is O(log N)!', 'SST2030@Aninda');
+      appendMockMessage('Rahul Sharma (SST)', enc, false);
     });
 
     document.getElementById('sim-unknown-btn').addEventListener('click', async () => {

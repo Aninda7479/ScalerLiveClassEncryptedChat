@@ -18,8 +18,7 @@ async function computeFingerprint(password) {
 function loadData() {
   chrome.storage.local.get([STORAGE_KEY_PROFILES, STORAGE_KEY_ACTIVE], (res) => {
     profiles = res[STORAGE_KEY_PROFILES] || [
-      { id: 'prof_default', name: 'Squad Secret', key: 'secret123', fingerprint: 'fcf730b6', color: '#10b981' },
-      { id: 'prof_arin', name: 'Arin', key: 'scaler2026', fingerprint: '88d4266f', color: '#0284c7' }
+      { id: 'prof_sst', name: 'SST', key: 'SST2030@Aninda', fingerprint: '5c3ffcbe', color: '#0284c7' }
     ];
     activeProfileId = res[STORAGE_KEY_ACTIVE] || profiles[0].id;
     render();

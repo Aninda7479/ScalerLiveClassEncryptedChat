@@ -147,21 +147,14 @@
     if (saved && Array.isArray(saved) && saved.length > 0) {
       profiles = saved;
     } else {
-      const defaultKey = 'secret123';
+      const defaultKey = 'SST2030@Aninda';
       const fp = await computeFingerprint(defaultKey);
       profiles = [
         {
-          id: 'prof_default',
-          name: 'Squad Secret',
+          id: 'prof_sst',
+          name: 'SST',
           key: defaultKey,
           fingerprint: fp,
-          color: '#10b981'
-        },
-        {
-          id: 'prof_arin',
-          name: 'Arin',
-          key: 'scaler2026',
-          fingerprint: await computeFingerprint('scaler2026'),
           color: '#0284c7'
         }
       ];
@@ -720,7 +713,7 @@
           </div>
 
           <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px;">Add New Profile</div>
-          <input type="text" id="scaler-enc-new-name" class="scaler-enc-input" style="width: 100%; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #fff; padding: 6px 9px; font-size: 12px; margin-bottom: 6px; box-sizing: border-box;" placeholder="Profile Name (e.g. Arin, Squad)...">
+          <input type="text" id="scaler-enc-new-name" class="scaler-enc-input" style="width: 100%; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #fff; padding: 6px 9px; font-size: 12px; margin-bottom: 6px; box-sizing: border-box;" placeholder="Profile Name (e.g. SST, Study Group)...">
           <input type="password" id="scaler-enc-new-key" class="scaler-enc-input" style="width: 100%; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #fff; padding: 6px 9px; font-size: 12px; margin-bottom: 8px; box-sizing: border-box;" placeholder="Secret Key / Passphrase...">
           
           <div style="display: flex; gap: 6px; margin-bottom: 10px;">
