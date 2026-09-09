@@ -313,6 +313,390 @@
     });
   }
 
+  // --- TOAST NOTIFICATIONS ---
+  function showToast(msg, duration = 3000) {
+    const existing = document.querySelector('.scaler-enc-toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.className = 'scaler-enc-toast';
+    toast.innerHTML = `<span>${escapeHtml(msg)}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
+  }
+
+  // --- GIF & IMAGE ADAPTIVE COMPRESSION ENGINE ---
+  const TARGET_IMAGE_BYTES = 15000; // ~15 KB safe target for 1 single message
+
+  function isAnimatedGifBytes(arrayBuffer) {
+    const bytes = new Uint8Array(arrayBuffer);
+    if (bytes.length < 16) return false;
+    if (bytes[0] !== 0x47 || bytes[1] !== 0x49 || bytes[2] !== 0x46) return false; // GIF header
+    let gceCount = 0;
+    for (let i = 0; i < bytes.length - 2; i++) {
+      if (bytes[i] === 0x21 && bytes[i + 1] === 0xF9) {
+        gceCount++;
+        if (gceCount > 1) return true;
+      }
+    }
+    return false;
+  }
+
+  async function compressImageToTarget(file, targetBytes = TARGET_IMAGE_BYTES) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let origWidth = img.naturalWidth || img.width || 600;
+          let origHeight = img.naturalHeight || img.height || 400;
+          let maxDim = 850;
+          let curWidth = origWidth;
+          let curHeight = origHeight;
+
+          if (curWidth > maxDim || curHeight > maxDim) {
+            if (curWidth > curHeight) {
+              curHeight = Math.round((curHeight * maxDim) / curWidth);
+              curWidth = maxDim;
+            } else {
+              curWidth = Math.round((curWidth * maxDim) / curHeight);
+              curHeight = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = curWidth;
+          canvas.height = curHeight;
+          const ctx = canvas.getContext('2d');
+
+          // White background prevents transparent PNG alpha from turning black in JPEG/WebP
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, curWidth, curHeight);
+          ctx.drawImage(img, 0, 0, curWidth, curHeight);
+
+          // Determine preferred MIME
+          let mime = 'image/webp';
+          let testUrl = canvas.toDataURL('image/webp', 0.8);
+          if (!testUrl.startsWith('data:image/webp')) {
+            mime = 'image/jpeg';
+          }
+
+          let bestDataUrl = '';
+          let bestBytes = Infinity;
+          const qualities = [0.75, 0.6, 0.45, 0.32, 0.2];
+
+          for (const q of qualities) {
+            const dUrl = canvas.toDataURL(mime, q);
+            const b64Data = dUrl.substring(dUrl.indexOf(',') + 1);
+            const byteSize = Math.round((b64Data.length * 3) / 4);
+            bestDataUrl = dUrl;
+            bestBytes = byteSize;
+            if (byteSize <= targetBytes) break;
+          }
+
+          // If still larger, scale dimensions down further
+          if (bestBytes > targetBytes && curWidth > 380 && curHeight > 380) {
+            const scaleDown = 0.68;
+            curWidth = Math.round(curWidth * scaleDown);
+            curHeight = Math.round(curHeight * scaleDown);
+            canvas.width = curWidth;
+            canvas.height = curHeight;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, curWidth, curHeight);
+            ctx.drawImage(img, 0, 0, curWidth, curHeight);
+
+            for (const q of [0.55, 0.38, 0.22]) {
+              const dUrl = canvas.toDataURL(mime, q);
+              const b64Data = dUrl.substring(dUrl.indexOf(',') + 1);
+              const byteSize = Math.round((b64Data.length * 3) / 4);
+              bestDataUrl = dUrl;
+              bestBytes = byteSize;
+              if (byteSize <= targetBytes) break;
+            }
+          }
+
+          canvas.width = 0;
+          canvas.height = 0;
+
+          resolve({
+            dataUrl: bestDataUrl,
+            binaryBytes: bestBytes,
+            width: curWidth,
+            height: curHeight,
+            mime: mime
+          });
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = reader.result;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function splitDataIntoChunks(dataUrl, mime, caption, animated, maxChunkChars = 19000) {
+    const commaIdx = dataUrl.indexOf(',');
+    const b64Data = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+    const totalLen = b64Data.length;
+    const numChunks = Math.ceil(totalLen / maxChunkChars);
+    const chunkId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    const payloads = [];
+
+    for (let seq = 1; seq <= numChunks; seq++) {
+      const start = (seq - 1) * maxChunkChars;
+      const part = b64Data.substring(start, start + maxChunkChars);
+      payloads.push({
+        v: 1,
+        type: 'image_chunk',
+        id: chunkId,
+        seq: seq,
+        total: numChunks,
+        mime: mime,
+        caption: seq === numChunks ? caption : undefined,
+        animated: seq === numChunks ? animated : undefined,
+        data: part
+      });
+    }
+    return payloads;
+  }
+
+  async function sendEncryptedPayloads(payloadList, textarea) {
+    const prof = getActiveProfile();
+    if (!prof) {
+      alert('Please select or create a key profile first!');
+      openProfilesModal();
+      return;
+    }
+
+    for (let i = 0; i < payloadList.length; i++) {
+      const plaintext = typeof payloadList[i] === 'string' ? payloadList[i] : JSON.stringify(payloadList[i]);
+      const encrypted = await encryptText(plaintext, prof.key);
+      const byteLen = new Blob([encrypted]).size;
+      if (byteLen > 32700) {
+        showToast('⚠️ Chunk exceeds 32KB Agora limit. Sending aborted.');
+        return;
+      }
+
+      setReactInputValue(textarea, encrypted);
+      await new Promise(r => setTimeout(r, 60));
+      triggerSendMessage(textarea);
+
+      if (i < payloadList.length - 1) {
+        showToast(`Sending part ${i + 1} of ${payloadList.length}...`, 1000);
+        await new Promise(r => setTimeout(r, 140));
+      }
+    }
+  }
+
+  // --- MEDIA STAGING & SENDING UI ---
+  let pendingStagedMedia = null;
+
+  function clearStagedMedia() {
+    pendingStagedMedia = null;
+    const existing = document.querySelector('.scaler-enc-image-stage');
+    if (existing) existing.remove();
+  }
+
+  function stageMediaForSending(mediaObj, textarea) {
+    clearStagedMedia();
+    pendingStagedMedia = mediaObj;
+
+    const chatInputField = textarea.closest('.chat-input__field') || textarea.parentElement;
+
+    const stageBox = document.createElement('div');
+    stageBox.className = 'scaler-enc-image-stage';
+
+    const kbSize = (mediaObj.binaryBytes / 1024).toFixed(1);
+    const isGif = !!mediaObj.isAnimatedGif;
+    const requiresChunks = mediaObj.binaryBytes > TARGET_IMAGE_BYTES;
+    const isVeryLargeGif = isGif && mediaObj.binaryBytes > 75000;
+
+    stageBox.innerHTML = `
+      <div class="scaler-enc-stage-main">
+        <div class="scaler-enc-stage-thumb-box">
+          <img class="scaler-enc-stage-thumb" src="${escapeHtml(mediaObj.dataUrl)}" alt="Stage thumbnail" />
+        </div>
+        <div class="scaler-enc-stage-info">
+          <div class="scaler-enc-stage-title-row">
+            <span class="scaler-enc-stage-title">${isGif ? 'Animated GIF' : 'Image ready to send'}</span>
+            ${isGif ? '<span class="scaler-enc-badge scaler-enc-badge-gif">GIF</span>' : ''}
+            <span class="scaler-enc-badge scaler-enc-badge-size">${kbSize} KB</span>
+            ${requiresChunks ? '<span class="scaler-enc-badge scaler-enc-badge-chunk">Multi-chunk</span>' : '<span class="scaler-enc-badge scaler-enc-badge-size" style="color: #38bdf8;">Single msg</span>'}
+          </div>
+          <input type="text" class="scaler-enc-stage-caption-input" placeholder="Add a caption... (optional)" />
+        </div>
+      </div>
+      ${isVeryLargeGif ? `
+        <div class="scaler-enc-stage-warning">
+          <span>⚠️ GIF is large (${kbSize} KB). Recommend sending 1st frame as static image.</span>
+          <button id="scaler-enc-stage-frame-btn">Send 1st Frame</button>
+        </div>
+      ` : ''}
+      <div class="scaler-enc-stage-actions">
+        <button class="scaler-enc-stage-send-btn" id="scaler-enc-stage-send-btn">
+          🔒 Encrypt & Send ${isGif ? 'GIF' : 'Image'}
+        </button>
+        <button class="scaler-enc-stage-cancel-btn" id="scaler-enc-stage-cancel-btn">✕ Cancel</button>
+      </div>
+    `;
+
+    if (chatInputField) {
+      chatInputField.parentElement.insertBefore(stageBox, chatInputField);
+    } else {
+      textarea.parentElement.insertBefore(stageBox, textarea);
+    }
+
+    const captionInput = stageBox.querySelector('.scaler-enc-stage-caption-input');
+    captionInput.focus();
+
+    captionInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        stageBox.querySelector('#scaler-enc-stage-send-btn').click();
+      }
+    });
+
+    if (isVeryLargeGif) {
+      stageBox.querySelector('#scaler-enc-stage-frame-btn').addEventListener('click', async () => {
+        showToast('Extracting 1st frame...');
+        const compressed = await compressImageToTarget(mediaObj.rawFile, TARGET_IMAGE_BYTES);
+        stageMediaForSending({
+          dataUrl: compressed.dataUrl,
+          binaryBytes: compressed.binaryBytes,
+          width: compressed.width,
+          height: compressed.height,
+          mime: compressed.mime,
+          isAnimatedGif: false
+        }, textarea);
+      });
+    }
+
+    stageBox.querySelector('#scaler-enc-stage-cancel-btn').addEventListener('click', () => {
+      clearStagedMedia();
+    });
+
+    stageBox.querySelector('#scaler-enc-stage-send-btn').addEventListener('click', async () => {
+      const caption = captionInput.value.trim();
+      const currentMedia = pendingStagedMedia;
+      clearStagedMedia();
+
+      if (!currentMedia) return;
+
+      if (currentMedia.binaryBytes <= TARGET_IMAGE_BYTES) {
+        // Single message
+        const payload = {
+          v: 1,
+          type: 'image',
+          mime: currentMedia.mime,
+          src: currentMedia.dataUrl,
+          caption: caption || undefined,
+          animated: !!currentMedia.isAnimatedGif
+        };
+        await sendEncryptedPayloads([payload], textarea);
+      } else {
+        // Multi-chunk message
+        const chunks = splitDataIntoChunks(
+          currentMedia.dataUrl,
+          currentMedia.mime,
+          caption,
+          !!currentMedia.isAnimatedGif
+        );
+        showToast(`Sending in ${chunks.length} encrypted parts...`);
+        await sendEncryptedPayloads(chunks, textarea);
+      }
+    });
+  }
+
+  async function handleFileSelection(file, textarea) {
+    if (!file) return;
+
+    if (file.type === 'image/gif' || file.name?.toLowerCase().endsWith('.gif')) {
+      const buffer = await file.arrayBuffer();
+      const isAnim = isAnimatedGifBytes(buffer);
+      if (isAnim) {
+        // Handle animated GIF
+        const reader = new FileReader();
+        reader.onload = () => {
+          stageMediaForSending({
+            dataUrl: reader.result,
+            binaryBytes: file.size,
+            mime: 'image/gif',
+            isAnimatedGif: true,
+            rawFile: file
+          }, textarea);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+
+    // Static image or single-frame GIF
+    showToast('Compressing image for encrypted chat...');
+    try {
+      const compressed = await compressImageToTarget(file, TARGET_IMAGE_BYTES);
+      stageMediaForSending({
+        dataUrl: compressed.dataUrl,
+        binaryBytes: compressed.binaryBytes,
+        width: compressed.width,
+        height: compressed.height,
+        mime: compressed.mime,
+        isAnimatedGif: false
+      }, textarea);
+    } catch (e) {
+      alert('Failed to process image: ' + e.message);
+    }
+  }
+
+  function setupMediaDropAndPaste(textarea, chatInputWrapper) {
+    if (textarea.dataset.scalerEncMediaBound === 'true') return;
+    textarea.dataset.scalerEncMediaBound = 'true';
+
+    // 1. Paste listener
+    textarea.addEventListener('paste', async (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          e.preventDefault();
+          const file = items[i].getAsFile();
+          if (file) {
+            await handleFileSelection(file, textarea);
+            return;
+          }
+        }
+      }
+    });
+
+    // 2. Drag & Drop listeners
+    const dropTarget = chatInputWrapper || textarea;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropTarget.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropTarget.classList.add('scaler-enc-drop-active');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropTarget.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropTarget.classList.remove('scaler-enc-drop-active');
+      }, false);
+    });
+
+    dropTarget.addEventListener('drop', async (e) => {
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith('image/') || file.name.match(/\.(png|jpe?g|webp|gif)$/i)) {
+          await handleFileSelection(file, textarea);
+        }
+      }
+    });
+  }
+
   // --- INJECT CLEAN CONTROLS INTO SCALER'S CHAT BAR ---
   function injectNativeChatControls() {
     const textarea = document.querySelector('textarea.chat-input__textarea, [data-cy="meetings-sidebar-chat-input-area"]');
@@ -320,6 +704,7 @@
 
     const chatInputField = textarea.closest('.chat-input__field') || textarea.parentElement;
     const chatControls = textarea.closest('.chat-input')?.querySelector('.chat-input__controls') || document.querySelector('.chat-input__controls');
+    const chatInputWrapper = textarea.closest('.chat-input') || chatInputField;
 
     if (chatControls && !chatControls.querySelector('.scaler-enc-controls-wrapper')) {
       const wrapper = document.createElement('div');
@@ -375,6 +760,40 @@
     if (chatInputField && !chatInputField.querySelector('.scaler-enc-lock-btn')) {
       const emojiDropdown = chatInputField.querySelector('.dropdown, .icon-emoji')?.closest('.dropdown');
       
+      // Hidden file input for attachment
+      let fileInput = chatInputField.querySelector('.scaler-enc-hidden-file-input');
+      if (!fileInput) {
+        fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*,.gif';
+        fileInput.className = 'scaler-enc-hidden-file-input';
+        fileInput.style.display = 'none';
+        fileInput.addEventListener('change', async () => {
+          if (fileInput.files && fileInput.files[0]) {
+            await handleFileSelection(fileInput.files[0], textarea);
+            fileInput.value = '';
+          }
+        });
+        chatInputField.appendChild(fileInput);
+      }
+
+      // Attachment button (📷)
+      const attachBtn = document.createElement('a');
+      attachBtn.className = 'tappable btn btn-icon btn-small scaler-enc-attach-btn';
+      attachBtn.title = 'Encrypt & Send Image/GIF';
+      attachBtn.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+      `;
+      attachBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.click();
+      });
+
+      // Lock button
       const lockBtn = document.createElement('a');
       lockBtn.className = 'tappable btn btn-icon btn-small scaler-enc-lock-btn';
       lockBtn.title = 'Encrypt & Send';
@@ -392,10 +811,14 @@
       });
 
       if (emojiDropdown) {
-        emojiDropdown.parentElement.insertBefore(lockBtn, emojiDropdown.nextSibling);
+        emojiDropdown.parentElement.insertBefore(attachBtn, emojiDropdown.nextSibling);
+        emojiDropdown.parentElement.insertBefore(lockBtn, attachBtn.nextSibling);
       } else {
+        chatInputField.appendChild(attachBtn);
         chatInputField.appendChild(lockBtn);
       }
+
+      setupMediaDropAndPaste(textarea, chatInputWrapper);
     }
   }
 
@@ -418,6 +841,14 @@
   }
 
   async function handleEncryptAndSend(textarea) {
+    if (pendingStagedMedia) {
+      const stageBtn = document.getElementById('scaler-enc-stage-send-btn');
+      if (stageBtn) {
+        stageBtn.click();
+        return;
+      }
+    }
+
     const text = textarea.value.trim();
     if (!text) return;
 
@@ -429,6 +860,12 @@
     }
 
     const encrypted = await encryptText(text, prof.key);
+    const byteLen = new Blob([encrypted]).size;
+    if (byteLen > 32700) {
+      showToast(`⚠️ Message too long (${byteLen} bytes). Max is 32KB. Please shorten.`);
+      return;
+    }
+
     setReactInputValue(textarea, encrypted);
 
     setTimeout(() => {
@@ -503,7 +940,66 @@
     }
   }
 
-  function renderCleanDecryptedCard(container, plaintext, profile, rawToken) {
+  // --- MULTI-CHUNK IMAGE ASSEMBLER ---
+  const chunkBuffer = new Map();
+
+  function handleIncomingImageChunk(chunk, profile, rawToken, container) {
+    const { id, seq, total, data, mime, caption, animated } = chunk;
+    if (!id || !seq || !total || !data) return { complete: false, progress: 'Invalid chunk' };
+
+    let entry = chunkBuffer.get(id);
+    if (!entry) {
+      entry = {
+        id,
+        total,
+        chunks: new Map(),
+        mime: mime || 'image/webp',
+        caption: caption || '',
+        animated: !!animated,
+        profile,
+        container,
+        createdAt: Date.now()
+      };
+      chunkBuffer.set(id, entry);
+
+      // Memory cleanup: expire incomplete chunk buffers after 60s
+      setTimeout(() => {
+        if (chunkBuffer.has(id)) chunkBuffer.delete(id);
+      }, 60000);
+    }
+
+    entry.chunks.set(seq, data);
+    if (mime) entry.mime = mime;
+    if (caption) entry.caption = caption;
+    if (animated !== undefined) entry.animated = animated;
+
+    if (entry.chunks.size >= total) {
+      let fullBase64 = '';
+      for (let s = 1; s <= total; s++) {
+        fullBase64 += entry.chunks.get(s) || '';
+      }
+      chunkBuffer.delete(id);
+      const dataUrl = `data:${entry.mime};base64,${fullBase64}`;
+      return {
+        complete: true,
+        media: {
+          v: 1,
+          type: 'image',
+          mime: entry.mime,
+          src: dataUrl,
+          caption: entry.caption,
+          animated: entry.animated
+        }
+      };
+    }
+
+    return {
+      complete: false,
+      progress: `Receiving image... (${entry.chunks.size}/${total} parts)`
+    };
+  }
+
+  function renderChunkProgressCard(container, progressText, profile, rawToken) {
     const pTags = container.querySelectorAll('p');
     pTags.forEach(p => {
       if (p.textContent.includes('🔒[ENC:v1:')) {
@@ -520,6 +1016,245 @@
     card.innerHTML = `
       <div class="scaler-enc-badge-row">
         <span class="scaler-enc-chip" style="color: ${profile.color}; background: ${profile.color}18; border: 1px solid ${profile.color}35;">
+          ${escapeHtml(profile.name)}
+        </span>
+      </div>
+      <div class="scaler-enc-chunk-progress">
+        <span>⏳ ${escapeHtml(progressText)}</span>
+      </div>
+    `;
+    container.appendChild(card);
+  }
+
+  // --- FULLSCREEN LIGHTBOX IMAGE VIEWER ---
+  let activeLightbox = null;
+
+  function openLightboxViewer(src, title, isGif) {
+    if (activeLightbox) activeLightbox.remove();
+
+    let zoomLevel = 1;
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let translateX = 0, translateY = 0;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'scaler-enc-lightbox-overlay';
+
+    overlay.innerHTML = `
+      <div class="scaler-enc-lightbox-header">
+        <div class="scaler-enc-lightbox-title">
+          <span>📷</span>
+          <span>${escapeHtml(title || 'Encrypted Image Preview')}</span>
+          ${isGif ? '<span class="scaler-enc-badge scaler-enc-badge-gif">GIF</span>' : ''}
+        </div>
+        <button class="scaler-enc-lightbox-close" id="scaler-lb-close" title="Close (Esc)">&times;</button>
+      </div>
+      <div class="scaler-enc-lightbox-body" id="scaler-lb-body">
+        <img class="scaler-enc-lightbox-img" id="scaler-lb-img" src="${escapeHtml(src)}" alt="Preview" draggable="false" />
+      </div>
+      <div class="scaler-enc-lightbox-toolbar">
+        <button class="scaler-enc-lightbox-btn" id="scaler-lb-zoom-in" title="Zoom In">🔍+ Zoom In</button>
+        <button class="scaler-enc-lightbox-btn" id="scaler-lb-zoom-out" title="Zoom Out">🔍- Zoom Out</button>
+        <button class="scaler-enc-lightbox-btn" id="scaler-lb-reset" title="Reset Zoom">↺ Reset</button>
+        <button class="scaler-enc-lightbox-btn" id="scaler-lb-copy" title="Copy to Clipboard">📋 Copy</button>
+        <button class="scaler-enc-lightbox-btn" id="scaler-lb-download" title="Download Image">📥 Download</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    activeLightbox = overlay;
+
+    const imgEl = overlay.querySelector('#scaler-lb-img');
+    const bodyEl = overlay.querySelector('#scaler-lb-body');
+
+    function updateTransform() {
+      imgEl.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+    }
+
+    overlay.querySelector('#scaler-lb-zoom-in').addEventListener('click', () => {
+      zoomLevel = Math.min(zoomLevel + 0.3, 4);
+      updateTransform();
+    });
+
+    overlay.querySelector('#scaler-lb-zoom-out').addEventListener('click', () => {
+      zoomLevel = Math.max(zoomLevel - 0.3, 0.4);
+      updateTransform();
+    });
+
+    overlay.querySelector('#scaler-lb-reset').addEventListener('click', () => {
+      zoomLevel = 1;
+      translateX = 0;
+      translateY = 0;
+      updateTransform();
+    });
+
+    // Copy to clipboard
+    overlay.querySelector('#scaler-lb-copy').addEventListener('click', async () => {
+      try {
+        const res = await fetch(src);
+        const blob = await res.blob();
+        if (navigator.clipboard && window.ClipboardItem) {
+          if (blob.type === 'image/png') {
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            showToast('✅ Image copied to clipboard!');
+          } else {
+            const tempImg = new Image();
+            tempImg.onload = async () => {
+              const c = document.createElement('canvas');
+              c.width = tempImg.naturalWidth;
+              c.height = tempImg.naturalHeight;
+              c.getContext('2d').drawImage(tempImg, 0, 0);
+              c.toBlob(async (pngBlob) => {
+                if (pngBlob) {
+                  try {
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+                    showToast('✅ Image copied to clipboard!');
+                  } catch (e) {
+                    showToast('⚠️ Clipboard copy restricted. Use Download.');
+                  }
+                }
+              }, 'image/png');
+            };
+            tempImg.src = src;
+          }
+        } else {
+          showToast('📋 Clipboard copy not supported. Click Download.');
+        }
+      } catch (err) {
+        showToast('⚠️ Copy failed. Click Download instead.');
+      }
+    });
+
+    // Download image
+    overlay.querySelector('#scaler-lb-download').addEventListener('click', () => {
+      const ext = isGif ? 'gif' : 'png';
+      const a = document.createElement('a');
+      a.href = src;
+      a.download = `scaler-image-${Date.now()}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('📥 Downloading image...');
+    });
+
+    // Pan / Drag support
+    bodyEl.addEventListener('mousedown', (e) => {
+      if (e.target === bodyEl || e.target === imgEl) {
+        isDragging = true;
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      translateX = e.clientX - startX;
+      translateY = e.clientY - startY;
+      updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    // Mouse wheel zoom
+    bodyEl.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        zoomLevel = Math.min(zoomLevel + 0.15, 4);
+      } else {
+        zoomLevel = Math.max(zoomLevel - 0.15, 0.4);
+      }
+      updateTransform();
+    }, { passive: false });
+
+    function close() {
+      overlay.remove();
+      activeLightbox = null;
+      document.removeEventListener('keydown', handleKey);
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Escape') close();
+    }
+
+    overlay.querySelector('#scaler-lb-close').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === bodyEl || e.target === overlay) close();
+    });
+    document.addEventListener('keydown', handleKey);
+  }
+
+  // --- RENDER DECRYPTED MESSAGES (TEXT / IMAGE / GIF) ---
+  function renderCleanDecryptedCard(container, plaintext, profile, rawToken) {
+    const pTags = container.querySelectorAll('p');
+    pTags.forEach(p => {
+      if (p.textContent.includes('🔒[ENC:v1:')) {
+        p.style.display = 'none';
+      }
+    });
+
+    // Check if plaintext is JSON image payload or chunk
+    let mediaPayload = null;
+    let isChunk = false;
+
+    if (typeof plaintext === 'string' && plaintext.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(plaintext);
+        if (parsed && parsed.v === 1 && (parsed.type === 'image' || parsed.type === 'image_chunk')) {
+          mediaPayload = parsed;
+          if (parsed.type === 'image_chunk') isChunk = true;
+        }
+      } catch (e) {}
+    } else if (typeof plaintext === 'string' && plaintext.startsWith('data:image/')) {
+      mediaPayload = {
+        v: 1,
+        type: 'image',
+        src: plaintext,
+        mime: plaintext.substring(5, plaintext.indexOf(';')),
+        caption: '',
+        animated: plaintext.startsWith('data:image/gif')
+      };
+    }
+
+    if (isChunk) {
+      const chunkResult = handleIncomingImageChunk(mediaPayload, profile, rawToken, container);
+      if (!chunkResult.complete) {
+        renderChunkProgressCard(container, chunkResult.progress, profile, rawToken);
+        return;
+      }
+      mediaPayload = chunkResult.media;
+    }
+
+    const existing = container.querySelector('.scaler-enc-clean-msg, .scaler-enc-locked-msg');
+    if (existing) existing.remove();
+
+    const card = document.createElement('div');
+    card.className = 'scaler-enc-clean-msg';
+
+    let contentHtml = '';
+    let isImageMsg = mediaPayload && mediaPayload.type === 'image';
+
+    if (isImageMsg) {
+      const isGif = !!mediaPayload.animated || (mediaPayload.mime && mediaPayload.mime.includes('gif')) || mediaPayload.src.startsWith('data:image/gif');
+      const captionHtml = mediaPayload.caption ? `<div class="scaler-enc-image-caption">${formatPlaintext(mediaPayload.caption)}</div>` : '';
+      const gifBadge = isGif ? '<span class="scaler-enc-gif-badge">GIF</span>' : '';
+
+      contentHtml = `
+        <div class="scaler-enc-thumb-wrapper" data-isgif="${isGif ? 'true' : 'false'}">
+          ${gifBadge}
+          <img class="scaler-enc-thumb-img" src="${escapeHtml(mediaPayload.src)}" alt="Encrypted Image" loading="lazy" />
+          <div class="scaler-enc-thumb-overlay">🔍</div>
+        </div>
+        ${captionHtml}
+      `;
+    } else {
+      contentHtml = `<div class="scaler-enc-content">${formatPlaintext(plaintext)}</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="scaler-enc-badge-row">
+        <span class="scaler-enc-chip" style="color: ${profile.color}; background: ${profile.color}18; border: 1px solid ${profile.color}35;">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -528,7 +1263,7 @@
         </span>
         <span class="scaler-enc-raw-toggle" title="Toggle raw encrypted string">raw</span>
       </div>
-      <div class="scaler-enc-content">${formatPlaintext(plaintext)}</div>
+      ${contentHtml}
       <div class="scaler-enc-raw-text" style="display: none;">${escapeHtml(rawToken)}</div>
     `;
 
@@ -539,6 +1274,16 @@
       rawBox.style.display = isHidden ? 'block' : 'none';
       rawToggle.textContent = isHidden ? 'hide raw' : 'raw';
     });
+
+    if (isImageMsg) {
+      const thumbWrapper = card.querySelector('.scaler-enc-thumb-wrapper');
+      if (thumbWrapper) {
+        thumbWrapper.addEventListener('click', () => {
+          const isGif = thumbWrapper.dataset.isgif === 'true';
+          openLightboxViewer(mediaPayload.src, mediaPayload.caption || profile.name + ' Image', isGif);
+        });
+      }
+    }
 
     container.appendChild(card);
   }

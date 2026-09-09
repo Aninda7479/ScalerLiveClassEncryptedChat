@@ -306,3 +306,466 @@
   font-size: 11px !important;
   margin-top: 5px !important;
 }
+
+/* Image Attachment & Media Buttons */
+.scaler-enc-attach-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  margin-left: 4px !important;
+  padding: 0 !important;
+}
+
+.scaler-enc-attach-btn:hover {
+  background: #38bdf8 !important;
+  color: #0f172a !important;
+  border-color: #38bdf8 !important;
+  transform: scale(1.05) !important;
+}
+
+.scaler-enc-attach-btn:active {
+  transform: scale(0.96) !important;
+}
+
+/* Drag and Drop Zone Overlay */
+.scaler-enc-drop-active {
+  position: relative !important;
+}
+
+.scaler-enc-drop-active::after {
+  content: "📁 Drop Image or GIF here to Encrypt & Send 🔒" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.92) !important;
+  border: 2px dashed #38bdf8 !important;
+  border-radius: 8px !important;
+  color: #38bdf8 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+  pointer-events: none !important;
+  box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.25) !important;
+}
+
+/* Staging Bar above Textarea */
+.scaler-enc-image-stage {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  background: #0f172a !important;
+  border: 1px solid #334155 !important;
+  border-bottom: 2px solid #0284c7 !important;
+  border-radius: 8px 8px 0 0 !important;
+  padding: 10px 12px !important;
+  margin-bottom: 4px !important;
+  color: #f8fafc !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  animation: scalerEncSlideDown 0.2s ease-out !important;
+}
+
+@keyframes scalerEncSlideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scaler-enc-stage-main {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.scaler-enc-stage-thumb-box {
+  position: relative !important;
+  width: 58px !important;
+  height: 58px !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  border: 1px solid #334155 !important;
+  background: #1e293b !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.scaler-enc-stage-thumb {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+.scaler-enc-stage-info {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+}
+
+.scaler-enc-stage-title-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.scaler-enc-stage-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #f1f5f9 !important;
+}
+
+.scaler-enc-badge {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.scaler-enc-badge-gif {
+  background: #ec4899 !important;
+  color: #ffffff !important;
+}
+
+.scaler-enc-badge-size {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  border: 1px solid #334155 !important;
+}
+
+.scaler-enc-badge-chunk {
+  background: #f59e0b !important;
+  color: #1e1b4b !important;
+}
+
+.scaler-enc-stage-caption-input {
+  width: 100% !important;
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+  border-radius: 5px !important;
+  color: #f8fafc !important;
+  padding: 5px 8px !important;
+  font-size: 11px !important;
+  box-sizing: border-box !important;
+}
+
+.scaler-enc-stage-caption-input:focus {
+  outline: none !important;
+  border-color: #38bdf8 !important;
+}
+
+.scaler-enc-stage-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-top: 2px !important;
+}
+
+.scaler-enc-stage-send-btn {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 5px !important;
+  padding: 6px 12px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  transition: background 0.15s ease !important;
+}
+
+.scaler-enc-stage-send-btn:hover {
+  background: #0369a1 !important;
+}
+
+.scaler-enc-stage-cancel-btn {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 5px !important;
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+}
+
+.scaler-enc-stage-cancel-btn:hover {
+  color: #f1f5f9 !important;
+  background: #1e293b !important;
+}
+
+.scaler-enc-stage-warning {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  border-radius: 5px !important;
+  padding: 6px 10px !important;
+  font-size: 11px !important;
+  color: #fbbf24 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.scaler-enc-stage-warning button {
+  background: #d97706 !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+/* Decrypted Chat Thumbnail */
+.scaler-enc-thumb-wrapper {
+  margin-top: 6px !important;
+  position: relative !important;
+  display: inline-block !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: #090d16 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  cursor: pointer !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  max-width: 100% !important;
+}
+
+.scaler-enc-thumb-wrapper:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45) !important;
+  border-color: #38bdf8 !important;
+}
+
+.scaler-enc-thumb-img {
+  display: block !important;
+  max-height: 220px !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+  background: repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 16px 16px !important;
+}
+
+.scaler-enc-thumb-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+  opacity: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  font-size: 18px !important;
+  transition: opacity 0.15s ease !important;
+}
+
+.scaler-enc-thumb-wrapper:hover .scaler-enc-thumb-overlay {
+  opacity: 1 !important;
+}
+
+.scaler-enc-gif-badge {
+  position: absolute !important;
+  top: 6px !important;
+  left: 6px !important;
+  background: rgba(236, 72, 153, 0.9) !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.5px !important;
+  pointer-events: none !important;
+}
+
+.scaler-enc-img-meta {
+  padding: 4px 8px !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-size: 10px !important;
+  color: #94a3b8 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.scaler-enc-image-caption {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: #f1f5f9 !important;
+  word-break: break-word !important;
+}
+
+/* Multi-chunk Receiving Progress */
+.scaler-enc-chunk-progress {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  background: #1e293b !important;
+  border: 1px dashed #38bdf8 !important;
+  border-radius: 6px !important;
+  color: #38bdf8 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  margin-top: 4px !important;
+  animation: scalerEncPulse 1.5s infinite !important;
+}
+
+@keyframes scalerEncPulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Fullscreen Lightbox Image Viewer */
+.scaler-enc-lightbox-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(5, 8, 15, 0.92) !important;
+  backdrop-filter: blur(6px) !important;
+  z-index: 2147483646 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  animation: scalerEncFadeIn 0.15s ease-out !important;
+}
+
+@keyframes scalerEncFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.scaler-enc-lightbox-header {
+  height: 48px !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-bottom: 1px solid #334155 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 16px !important;
+  color: #f8fafc !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  flex-shrink: 0 !important;
+}
+
+.scaler-enc-lightbox-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.scaler-enc-lightbox-body {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  position: relative !important;
+  padding: 20px !important;
+  cursor: grab !important;
+}
+
+.scaler-enc-lightbox-body:active {
+  cursor: grabbing !important;
+}
+
+.scaler-enc-lightbox-img {
+  max-width: 90vw !important;
+  max-height: 82vh !important;
+  object-fit: contain !important;
+  border-radius: 6px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7) !important;
+  transition: transform 0.12s ease-out !important;
+  user-select: none !important;
+}
+
+.scaler-enc-lightbox-toolbar {
+  height: 46px !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-top: 1px solid #334155 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  padding: 0 16px !important;
+  flex-shrink: 0 !important;
+}
+
+.scaler-enc-lightbox-btn {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+  border-radius: 6px !important;
+  padding: 6px 12px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+.scaler-enc-lightbox-btn:hover {
+  background: #334155 !important;
+  color: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+}
+
+.scaler-enc-lightbox-close {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border: none !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+}
+
+.scaler-enc-lightbox-close:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Toast Notifications */
+.scaler-enc-toast {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #38bdf8 !important;
+  border-radius: 8px !important;
+  padding: 10px 16px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;
+  z-index: 2147483647 !important;
+  animation: scalerEncSlideUp 0.2s ease-out !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+@keyframes scalerEncSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

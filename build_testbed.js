@@ -49,9 +49,11 @@ const simulationScript = `
     <strong>Scaler Encrypted Chat Testbed</strong>
   </div>
   <span>|</span>
-  <button class="sim-btn" id="sim-sst-btn">📥 Simulate 'SST' Message</button>
-  <button class="sim-btn" id="sim-unknown-btn">📥 Simulate 'Unknown Key' Message</button>
-  <span style="margin-left: auto; color: #94a3b8;">Type in chat box & click '🔒 Encrypt & Send'</span>
+  <button class="sim-btn" id="sim-sst-btn">📥 Simulate 'SST' Text</button>
+  <button class="sim-btn" id="sim-unknown-btn">📥 Unknown Key Text</button>
+  <button class="sim-btn" id="sim-image-btn" style="background:#0369a1; border-color:#38bdf8; color:#fff;">📸 Simulate Encrypted Image</button>
+  <button class="sim-btn" id="sim-gif-btn" style="background:#831843; border-color:#ec4899; color:#fff;">🎞️ Simulate Encrypted GIF</button>
+  <span style="margin-left: auto; color: #94a3b8;">Paste/Drop image into chat, or click 📷 attachment!</span>
 </div>
 
 <script>
@@ -111,6 +113,80 @@ const simulationScript = `
       // Unknown key: 'strangerKey777'
       const enc = await window.scalerEncryptTextTest('This is a confidential note between strangers', 'strangerKey777');
       appendMockMessage('Mystery Student', enc, false);
+    });
+
+    // Synthetic SVG canvas drawing converted to WebP data URL
+    function createSyntheticDataUrl(text, color, bgColor) {
+      const c = document.createElement('canvas');
+      c.width = 400;
+      c.height = 240;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = bgColor || '#0f172a';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.strokeStyle = color || '#38bdf8';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(10, 10, 380, 220);
+      ctx.fillStyle = color || '#38bdf8';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, 200, 110);
+      ctx.font = '14px monospace';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('Encrypted Scaler Image Demo', 200, 150);
+      return c.toDataURL('image/png');
+    }
+
+    document.getElementById('sim-image-btn').addEventListener('click', async () => {
+      const dataUrl = createSyntheticDataUrl('Binary Search Tree: O(log N)', '#38bdf8', '#0f172a');
+      const payload = JSON.stringify({
+        v: 1,
+        type: 'image',
+        mime: 'image/png',
+        src: dataUrl,
+        caption: 'Look at the BST time complexity diagram!',
+        animated: false
+      });
+      const enc = await window.scalerEncryptTextTest(payload, 'SST2030@Aninda');
+      appendMockMessage('Aninda (SST)', enc, false);
+    });
+
+    document.getElementById('sim-gif-btn').addEventListener('click', async () => {
+      // Animated 10x10 2-frame minimal GIF in base64
+      const gifB64 = 'R0lGODlhCgAKAIABAP8AAP///yH/C05FVFNDQVBFMi4wAwEAAAAh+QQBAAABACwAAAAACgAKAAACDIyPacHtvp5kE1o8BQA7ACH5BAEAAAEALAAAAAAKAAoAAAIKjI+py+0PWoQpAQA7';
+      const fullData = 'data:image/gif;base64,' + gifB64;
+      // Split into 2 chunks
+      const half = Math.ceil(gifB64.length / 2);
+      const chunkId = 'test_gif_' + Date.now();
+
+      const chunk1 = JSON.stringify({
+        v: 1,
+        type: 'image_chunk',
+        id: chunkId,
+        seq: 1,
+        total: 2,
+        mime: 'image/gif',
+        data: gifB64.substring(0, half)
+      });
+
+      const chunk2 = JSON.stringify({
+        v: 1,
+        type: 'image_chunk',
+        id: chunkId,
+        seq: 2,
+        total: 2,
+        mime: 'image/gif',
+        caption: 'Animated celebration GIF reaction! 🎉',
+        animated: true,
+        data: gifB64.substring(half)
+      });
+
+      const enc1 = await window.scalerEncryptTextTest(chunk1, 'SST2030@Aninda');
+      const enc2 = await window.scalerEncryptTextTest(chunk2, 'SST2030@Aninda');
+
+      appendMockMessage('Rohit (SST)', enc1, false);
+      setTimeout(() => {
+        appendMockMessage('Rohit (SST)', enc2, false);
+      }, 400);
     });
   });
 })();
