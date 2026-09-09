@@ -27,18 +27,45 @@
 
 ## 🚀 Installation Options
 
-### Option 1: Tampermonkey / Violentmonkey Userscript (Recommended)
+### Option 1: Tampermonkey / Violentmonkey Userscript (Recommended - 100% Auto-Update)
 1. Install [Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/) in your browser (Chrome, Brave, Edge, Firefox).
-2. Open the Tampermonkey Dashboard -> **Utilities** -> **Install from file** (or click **+ Add a new script**).
-3. Paste the contents of [`scaler-encrypted-chat.user.js`](./scaler-encrypted-chat.user.js) and click **Save** (`Ctrl + S`).
-4. Navigate to any Scaler Academy live class session (e.g., `https://www.scaler.com/academy/mentee-dashboard/class/576935/session?joinSession=1`). The encryption toolbar will appear right above the chat input box!
+2. Click this direct install link: [**Install scaler-encrypted-chat.user.js directly from GitHub**](https://raw.githubusercontent.com/Aninda7479/ScalerLiveClassEncryptedChat/main/scaler-encrypted-chat.user.js)
+3. Tampermonkey will prompt you to install. Click **Install**.
+4. **Auto-Updates**: The script is configured with `@updateURL` and `@downloadURL`. Tampermonkey will silently and automatically keep it updated from GitHub whenever a new version is pushed!
 
 ### Option 2: Chrome Extension (Manifest V3)
-1. Open Google Chrome (or Brave / Edge) and go to `chrome://extensions`.
-2. Enable **Developer mode** toggle in the top-right corner.
-3. Click **Load unpacked** in the top-left corner.
-4. Select the [`chrome-extension`](./chrome-extension) folder in this repository.
-5. The extension icon will appear in your Chrome toolbar. Pin it for quick access!
+1. Download the latest release `.zip` from [GitHub Releases](https://github.com/Aninda7479/ScalerLiveClassEncryptedChat/releases/latest) or clone this repo.
+2. Open Google Chrome (or Brave / Edge) and go to `chrome://extensions`.
+3. Enable **Developer mode** toggle in the top-right corner.
+4. Click **Load unpacked** in the top-left corner.
+5. Select the [`chrome-extension`](./chrome-extension) folder.
+6. The extension icon will appear in your Chrome toolbar. Pin it for quick access!
+7. **Auto-Update Detection**: The extension automatically checks GitHub Releases every 12 hours. When a new version is released, a `NEW` badge appears on the toolbar icon with a 1-click download banner inside the popup.
+8. **1-Click Updater**: Double-click [`update.bat`](./update.bat) on Windows to instantly pull the latest release from GitHub into your extension folder, then simply click the reload icon in `chrome://extensions`.
+
+---
+
+## 🔄 How to Release a New Version (For Maintainers)
+
+The repository includes a GitHub Actions CI/CD workflow (`.github/workflows/release.yml`) that automatically packages and publishes releases.
+
+To publish a new version:
+1. Update version strings in:
+   - [`chrome-extension/manifest.json`](./chrome-extension/manifest.json) (`"version": "1.4.0"`)
+   - [`scaler-encrypted-chat.user.js`](./scaler-encrypted-chat.user.js) (`// @version 1.4.0`)
+2. Commit and tag:
+   ```bash
+   git add .
+   git commit -m "chore: release v1.4.0"
+   git tag v1.4.0
+   git push origin main --tags
+   ```
+3. GitHub Actions will automatically:
+   - Package the `chrome-extension` into `ScalerLiveClassEncryptedChat-ChromeExtension.zip`
+   - Create a GitHub Release for tag `v1.4.0`
+   - Attach the zipped extension and userscript to the release
+   - Tampermonkey users will receive the update automatically in the background
+   - Extension users will see an update notification banner and badge in Chrome
 
 ---
 
@@ -68,14 +95,17 @@ Messages sent through the tool are formatted as:
 ## 📁 Repository Structure
  
 ```text
+├── .github/workflows/release.yml   # GitHub Actions automated release workflow
+├── update.bat                      # 1-click Windows updater helper
 ├── logo.svg                        # Master vector SVG logo
-├── scaler-encrypted-chat.user.js   # Tampermonkey / Violentmonkey Userscript
+├── scaler-encrypted-chat.user.js   # Tampermonkey / Violentmonkey Userscript (auto-updating)
 ├── chrome-extension/               # Chrome Extension (Manifest V3)
-│   ├── manifest.json               # Extension manifest
+│   ├── manifest.json               # Extension manifest (v1.3.0)
+│   ├── background.js               # Service worker for periodic GitHub update checks
 │   ├── content.js                  # Content script (injection & live observer)
 │   ├── content.css                 # Scaler-themed styles
-│   ├── popup.html                  # Toolbar popup UI
-│   ├── popup.js                    # Toolbar popup logic
+│   ├── popup.html                  # Toolbar popup UI with update banner
+│   ├── popup.js                    # Toolbar popup logic with update detection
 │   └── icons/                      # Extension icons (logo.svg, icon16, icon48, icon128)
 ├── test-scaler-chat.html           # Runnable interactive test harness
 ├── build_testbed.js                # Generator for testbed
@@ -90,4 +120,5 @@ Messages sent through the tool are formatted as:
 ## 👤 Author
 
 - **Aninda** — [Aninda7479 (Aninda) · GitHub](https://github.com/Aninda7479)
+
 

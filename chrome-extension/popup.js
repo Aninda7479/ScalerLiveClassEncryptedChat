@@ -198,4 +198,119 @@ document.getElementById('import-btn').addEventListener('click', async () => {
   }
 });
 
+// --- UPDATE CHECKER LOGIC ---
+function initUpdateChecker() {
+  // Sync version badge with manifest
+  try {
+    const manifest = chrome.runtime.getManifest();
+    const verBadge = document.getElementById('version-badge');
+    if (verBadge && manifest && manifest.version) {
+      verBadge.textContent = `v${manifest.version}`;
+    }
+  } catch (e) {}
+
+  checkStoredUpdate();
+
+  // Dismiss Banner
+  const dismissBtn = document.getElementById('update-dismiss-btn');
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', () => {
+      const banner = document.getElementById('update-banner');
+      if (banner) banner.style.display = 'none';
+      try {
+        chrome.runtime.sendMessage({ type: 'DISMISS_UPDATE_BADGE' });
+      } catch (e) {}
+    });
+  }
+
+  // Manual Check Button
+  const checkBtn = document.getElementById('check-update-btn');
+  const statusEl = document.getElementById('update-check-status');
+
+  if (checkBtn) {
+    checkBtn.addEventListener('click', () => {
+      if (statusEl) {
+        statusEl.textContent = 'Checking GitHub...';
+        statusEl.style.color = '#38bdf8';
+      }
+      try {
+        chrome.runtime.sendMessage({ type: 'CHECK_FOR_UPDATES' }, (response) => {
+          if (chrome.runtime.lastError || !response) {
+            if (statusEl) {
+              statusEl.textContent = 'Check failed. Try again later.';
+              statusEl.style.color = '#f87171';
+            }
+            return;
+          }
+          if (response.success) {
+            if (response.hasUpdate) {
+              if (statusEl) {
+                statusEl.textContent = `New version v${response.updateInfo.version} found!`;
+                statusEl.style.color = '#38bdf8';
+              }
+              checkStoredUpdate();
+            } else {
+              if (statusEl) {
+                statusEl.textContent = `You have the latest version (v${response.version}).`;
+                statusEl.style.color = '#10b981';
+              }
+              checkStoredUpdate();
+            }
+          } else {
+            if (statusEl) {
+              statusEl.textContent = response.error ? `Check error: ${response.error}` : 'Could not reach GitHub.';
+              statusEl.style.color = '#f87171';
+            }
+          }
+          setTimeout(() => {
+            if (statusEl) statusEl.textContent = '';
+          }, 3500);
+        });
+      } catch (err) {
+        if (statusEl) statusEl.textContent = 'Error checking update.';
+      }
+    });
+  }
+}
+
+function checkStoredUpdate() {
+  try {
+    chrome.storage.local.get(['updateAvailable'], (res) => {
+      const update = res ? res.updateAvailable : null;
+      const banner = document.getElementById('update-banner');
+      if (!banner) return;
+
+      if (update && update.hasUpdate) {
+        const titleEl = document.getElementById('update-version-label');
+        if (titleEl) titleEl.textContent = `Update v${update.version} Available!`;
+
+        const descEl = document.getElementById('update-desc');
+        if (descEl) {
+          if (update.notes && update.notes.trim()) {
+            const cleanNotes = update.notes.replace(/[#*`_]/g, '').trim();
+            descEl.textContent = cleanNotes.length > 80 ? cleanNotes.slice(0, 80) + '...' : cleanNotes;
+          } else {
+            descEl.textContent = 'A newer release is ready on GitHub.';
+          }
+        }
+
+        const downloadBtn = document.getElementById('update-download-btn');
+        if (downloadBtn) {
+          downloadBtn.href = update.downloadZipUrl || update.releaseUrl;
+        }
+
+        const notesBtn = document.getElementById('update-notes-btn');
+        if (notesBtn) {
+          notesBtn.href = update.releaseUrl;
+        }
+
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
+    });
+  } catch (e) {}
+}
+
 loadData();
+initUpdateChecker();

@@ -4,7 +4,9 @@
 // @version      1.3.0
 // @description  Clean, Adaptive End-to-End Encrypted Private Chat for Scaler Academy. Fixed key selection, high-contrast menus, key reveal toggle, and auto-decryption.
 // @author       Aninda
-// @homepageURL  https://github.com/Aninda7479
+// @homepageURL  https://github.com/Aninda7479/ScalerLiveClassEncryptedChat
+// @updateURL    https://raw.githubusercontent.com/Aninda7479/ScalerLiveClassEncryptedChat/main/scaler-encrypted-chat.user.js
+// @downloadURL  https://raw.githubusercontent.com/Aninda7479/ScalerLiveClassEncryptedChat/main/scaler-encrypted-chat.user.js
 // @match        https://www.scaler.com/academy/mentee-dashboard/class/*
 // @match        https://*.scaler.com/*
 // @match        file://*/*page.html*

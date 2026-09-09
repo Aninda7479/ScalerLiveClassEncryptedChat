@@ -253,6 +253,103 @@
       background: #334155;
       color: #fff;
     }
+
+    /* Update Banner */
+    .update-banner {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.18), rgba(56, 189, 248, 0.08));
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 8px;
+      padding: 9px 11px;
+      margin-bottom: 12px;
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .update-banner-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .update-title-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+    .update-pulse {
+      width: 7px;
+      height: 7px;
+      background: #38bdf8;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #38bdf8;
+      display: inline-block;
+    }
+    .update-dismiss-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0 3px;
+      line-height: 1;
+    }
+    .update-dismiss-btn:hover {
+      color: #f87171;
+    }
+    .update-desc {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .update-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-update-download {
+      flex: 1;
+      background: #0284c7;
+      color: #fff;
+      text-decoration: none;
+      text-align: center;
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-block;
+      transition: background 0.12s;
+    }
+    .btn-update-download:hover {
+      background: #0369a1;
+    }
+    .btn-update-notes {
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      text-decoration: none;
+      text-align: center;
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      transition: background 0.12s;
+    }
+    .btn-update-notes:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+    .update-status-msg {
+      text-align: center;
+      font-size: 11px;
+      margin-top: 6px;
+      color: #94a3b8;
+      min-height: 14px;
+    }
   </style>
 </head>
 <body>
@@ -261,7 +358,23 @@
       <img src="icons/logo.svg" alt="Logo" class="logo-icon">
       Scaler Encrypted Chat
     </div>
-    <span class="version">v1.3</span>
+    <span class="version" id="version-badge">v1.3</span>
+  </div>
+
+  <!-- Auto-Update Alert Banner -->
+  <div id="update-banner" class="update-banner">
+    <div class="update-banner-header">
+      <div class="update-title-group">
+        <span class="update-pulse"></span>
+        <span id="update-version-label">Update Available!</span>
+      </div>
+      <button id="update-dismiss-btn" class="update-dismiss-btn" title="Dismiss">✕</button>
+    </div>
+    <div class="update-desc" id="update-desc">A newer release is available on GitHub.</div>
+    <div class="update-actions">
+      <a id="update-download-btn" class="btn-update-download" href="#" target="_blank">🚀 Download Update</a>
+      <a id="update-notes-btn" class="btn-update-notes" href="#" target="_blank">Changelog</a>
+    </div>
   </div>
 
   <div class="section-title">Key Profiles</div>
@@ -277,9 +390,11 @@
     <button id="export-btn" class="btn-secondary">📋 Export</button>
     <button id="import-btn" class="btn-secondary">📥 Import</button>
   </div>
-  <div style="text-align: center; margin-top: 10px; font-size: 11px; color: #64748b;">
-    Developed by <a href="https://github.com/Aninda7479" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">Aninda</a>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 11px; color: #64748b;">
+    <span>By <a href="https://github.com/Aninda7479" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">Aninda</a></span>
+    <button id="check-update-btn" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 11px; padding: 0; text-decoration: underline;" title="Check GitHub for latest release">Check for updates</button>
   </div>
+  <div id="update-check-status" class="update-status-msg"></div>
 
   <script src="popup.js"></script>
 </body>
