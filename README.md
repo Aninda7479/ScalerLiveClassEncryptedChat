@@ -69,8 +69,20 @@ To publish a new version:
 
 ---
 
-## 🧪 Try It Offline (Interactive Testbed)
+## 🧪 Testing
 
+### Automated Test Suites
+Run the automated cryptographic and edge-case test suites:
+```bash
+node test/run_all.js
+```
+Or run individual test suites:
+```bash
+node test/test_crypto.js
+node test/test_expanded.js
+```
+
+### Interactive Testbed (Offline Simulation)
 A complete offline test harness based on the real Scaler classroom HTML has been created:
 - Simply double-click or open [`test-scaler-chat.html`](./test-scaler-chat.html) in your browser.
 - Use the simulation toolbar at the top:
@@ -107,10 +119,12 @@ Messages sent through the tool are formatted as:
 │   ├── popup.html                  # Toolbar popup UI with update banner
 │   ├── popup.js                    # Toolbar popup logic with update detection
 │   └── icons/                      # Extension icons (logo.svg, icon16, icon48, icon128)
+├── test/                           # Automated test suites
+│   ├── run_all.js                  # Test suite runner
+│   ├── test_crypto.js              # Crypto engine test suite (6 tests)
+│   └── test_expanded.js            # Edge-case & Unicode test suite (4 tests)
 ├── test-scaler-chat.html           # Runnable interactive test harness
 ├── build_testbed.js                # Generator for testbed
-├── test_crypto.js                  # Automated test suite (6 tests)
-├── test_expanded.js                # Edge-case & Unicode test suite (4 tests)
 ├── page.html                       # Original Scaler classroom HTML
 └── README.md                       # Documentation
 ```
