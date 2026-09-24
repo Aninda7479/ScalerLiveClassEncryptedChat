@@ -80,6 +80,14 @@ Or run individual test suites:
 ```bash
 node test/test_crypto.js
 node test/test_expanded.js
+node test/test_userscript_sync.js
+```
+
+### Build & Compilation
+To compile the userscript and update the interactive testbed from source:
+```bash
+node build_userscript.js
+node build_testbed.js
 ```
 
 ### Interactive Testbed (Offline Simulation)
@@ -111,8 +119,9 @@ Messages sent through the tool are formatted as:
 ├── update.bat                      # 1-click Windows updater helper
 ├── logo.svg                        # Master vector SVG logo
 ├── scaler-encrypted-chat.user.js   # Tampermonkey / Violentmonkey Userscript (auto-updating)
+├── build_userscript.js             # Automated builder: compiles content.js + content.css -> userscript
 ├── chrome-extension/               # Chrome Extension (Manifest V3)
-│   ├── manifest.json               # Extension manifest (v1.3.0)
+│   ├── manifest.json               # Extension manifest (v1.4.0)
 │   ├── background.js               # Service worker for periodic GitHub update checks
 │   ├── content.js                  # Content script (injection & live observer)
 │   ├── content.css                 # Scaler-themed styles
@@ -120,9 +129,10 @@ Messages sent through the tool are formatted as:
 │   ├── popup.js                    # Toolbar popup logic with update detection
 │   └── icons/                      # Extension icons (logo.svg, icon16, icon48, icon128)
 ├── test/                           # Automated test suites
-│   ├── run_all.js                  # Test suite runner
+│   ├── run_all.js                  # Test suite runner (runs all 3 suites)
 │   ├── test_crypto.js              # Crypto engine test suite (6 tests)
-│   └── test_expanded.js            # Edge-case & Unicode test suite (4 tests)
+│   ├── test_expanded.js            # Scaler 1000-letter limit, chunking & Unicode test suite (9 tests)
+│   └── test_userscript_sync.js     # Userscript parity, GM grants & sync test suite (9 tests)
 ├── test-scaler-chat.html           # Runnable interactive test harness
 ├── build_testbed.js                # Generator for testbed
 ├── page.html                       # Original Scaler classroom HTML

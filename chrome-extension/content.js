@@ -100,6 +100,12 @@
   const STORAGE_KEY_ACTIVE = 'scaler_enc_chat_active_profile_v2';
 
   async function storageGetAsync(key, defaultVal) {
+    if (typeof GM_getValue !== 'undefined') {
+      try {
+        const v = GM_getValue(key);
+        if (v !== undefined) return v;
+      } catch (e) {}
+    }
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       return new Promise(resolve => {
         chrome.storage.local.get([key], (res) => {
@@ -116,6 +122,11 @@
   }
 
   async function storageSetAsync(key, value) {
+    if (typeof GM_setValue !== 'undefined') {
+      try {
+        GM_setValue(key, value);
+      } catch (e) {}
+    }
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.set({ [key]: value });
     }
@@ -124,18 +135,56 @@
     } catch (e) {}
   }
 
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-    chrome.storage.onChanged.addListener((changes) => {
-      if (changes[STORAGE_KEY_PROFILES]) {
-        profiles = changes[STORAGE_KEY_PROFILES].newValue || [];
-        updateUIElements();
-        reprocessAllMessages();
-      }
-      if (changes[STORAGE_KEY_ACTIVE]) {
-        activeProfileId = changes[STORAGE_KEY_ACTIVE].newValue;
-        updateUIElements();
-      }
-    });
+  function setupStorageSync() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes[STORAGE_KEY_PROFILES]) {
+          profiles = changes[STORAGE_KEY_PROFILES].newValue || [];
+          updateUIElements();
+          reprocessAllMessages();
+        }
+        if (changes[STORAGE_KEY_ACTIVE]) {
+          activeProfileId = changes[STORAGE_KEY_ACTIVE].newValue;
+          updateUIElements();
+        }
+      });
+    }
+
+    if (typeof GM_addValueChangeListener !== 'undefined') {
+      try {
+        GM_addValueChangeListener(STORAGE_KEY_PROFILES, (name, oldVal, newVal, remote) => {
+          if (remote && newVal) {
+            profiles = newVal;
+            updateUIElements();
+            reprocessAllMessages();
+          }
+        });
+        GM_addValueChangeListener(STORAGE_KEY_ACTIVE, (name, oldVal, newVal, remote) => {
+          if (remote && newVal !== undefined) {
+            activeProfileId = newVal;
+            updateUIElements();
+          }
+        });
+      } catch (e) {}
+    }
+
+    try {
+      window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY_PROFILES && e.newValue) {
+          try {
+            profiles = JSON.parse(e.newValue);
+            updateUIElements();
+            reprocessAllMessages();
+          } catch (err) {}
+        }
+        if (e.key === STORAGE_KEY_ACTIVE && e.newValue) {
+          try {
+            activeProfileId = JSON.parse(e.newValue);
+            updateUIElements();
+          } catch (err) {}
+        }
+      });
+    } catch (e) {}
   }
 
   // --- PROFILES STATE ---
@@ -1401,11 +1450,24 @@
     });
   }
 
+  let observerScheduled = false;
+
+  function scheduleDOMScan() {
+    if (observerScheduled) return;
+    observerScheduled = true;
+    requestAnimationFrame(() => {
+      observerScheduled = false;
+      injectNativeChatControls();
+      const unread = document.querySelectorAll(
+        '[data-cy="meetings-chat-message"]:not([data-scaler-enc-processed="true"]), .chat-message:not([data-scaler-enc-processed="true"])'
+      );
+      unread.forEach(processChatMessageElement);
+    });
+  }
+
   function setupLiveObserver() {
     const observer = new MutationObserver(() => {
-      injectNativeChatControls();
-      const messages = document.querySelectorAll('[data-cy="meetings-chat-message"], .chat-message');
-      messages.forEach(processChatMessageElement);
+      scheduleDOMScan();
     });
 
     observer.observe(document.body, {
@@ -1413,9 +1475,7 @@
       subtree: true
     });
 
-    injectNativeChatControls();
-    const messages = document.querySelectorAll('[data-cy="meetings-chat-message"], .chat-message');
-    messages.forEach(processChatMessageElement);
+    scheduleDOMScan();
   }
 
   // --- KEY PROFILES MODAL (With Key Reveal Toggle) ---
@@ -1459,6 +1519,8 @@
               <path d="M 248,252 L 264,252 L 268,284 C 268,288 264,292 260,292 L 252,292 C 248,292 244,288 244,284 Z" fill="url(#mCyan)"/>
             </svg>
             <span>Key Profiles</span>
+            <span style="font-size: 10px; color: #64748b; background: #1e293b; padding: 2px 6px; border-radius: 4px; font-weight: normal;">v1.4.0</span>
+            <button id="scaler-enc-check-update-btn" style="background: transparent; border: 1px solid #334155; color: #38bdf8; font-size: 10px; padding: 2px 6px; border-radius: 4px; cursor: pointer;" title="Check GitHub for Updates">Check Update</button>
           </div>
           <button class="scaler-enc-modal-close" id="scaler-enc-modal-close-btn">&times;</button>
         </div>
@@ -1508,6 +1570,9 @@
             <button id="scaler-enc-export-btn" style="flex: 1; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; padding: 6px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">📋 Export</button>
             <button id="scaler-enc-import-btn" style="flex: 1; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; padding: 6px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">📥 Import</button>
           </div>
+          <div style="text-align: center; margin-top: 10px;">
+            <a href="https://github.com/Aninda7479/ScalerLiveClassEncryptedChat/releases" target="_blank" rel="noopener noreferrer" style="color: #64748b; font-size: 10px; text-decoration: none;">GitHub Releases & Updates ↗</a>
+          </div>
         </div>
       `;
 
@@ -1548,13 +1613,14 @@
       });
 
       modal.querySelectorAll('.modal-copy-key').forEach(b => {
-        b.addEventListener('click', () => {
+        b.addEventListener('click', async () => {
           const prof = profiles.find(p => p.id === b.dataset.id);
           if (!prof) return;
-          navigator.clipboard.writeText(prof.key).then(() => {
+          const ok = await safeCopyToClipboard(prof.key);
+          if (ok) {
             b.textContent = '✅';
             setTimeout(() => { b.textContent = '📋'; }, 1200);
-          });
+          }
         });
       });
 
@@ -1578,32 +1644,19 @@
       });
 
       modal.querySelector('#scaler-enc-export-btn').addEventListener('click', () => {
-        const json = JSON.stringify(profiles.map(p => ({ name: p.name, key: p.key, color: p.color })), null, 2);
-        navigator.clipboard.writeText(json).then(() => {
-          alert('✅ Profiles copied to clipboard!');
-        }).catch(() => {
-          prompt('Copy profiles JSON:', json);
-        });
+        exportProfilesAction();
       });
 
-      modal.querySelector('#scaler-enc-import-btn').addEventListener('click', async () => {
-        const input = prompt('Paste key profiles JSON:');
-        if (!input) return;
-        try {
-          const imported = JSON.parse(input);
-          if (Array.isArray(imported)) {
-            for (const item of imported) {
-              if (item.key) {
-                await addProfile(item.name || 'Shared Key', item.key, item.color || '#0284c7');
-              }
-            }
-            alert(`✅ Imported ${imported.length} profile(s)!`);
-            renderModalContent();
-          }
-        } catch (e) {
-          alert('❌ Invalid JSON.');
-        }
+      modal.querySelector('#scaler-enc-import-btn').addEventListener('click', () => {
+        importProfilesAction(() => renderModalContent());
       });
+
+      const checkUpdateBtn = modal.querySelector('#scaler-enc-check-update-btn');
+      if (checkUpdateBtn) {
+        checkUpdateBtn.addEventListener('click', () => {
+          checkForUserscriptUpdate(true);
+        });
+      }
     }
 
     function closeModal() {
@@ -1617,6 +1670,130 @@
     renderModalContent();
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+  }
+
+  // --- SAFE CLIPBOARD & ACTIONS ---
+  async function safeCopyToClipboard(text) {
+    if (typeof GM_setClipboard !== 'undefined') {
+      try {
+        GM_setClipboard(text, 'text');
+        return true;
+      } catch (e) {}
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {}
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (success) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  async function exportProfilesAction() {
+    const json = JSON.stringify(profiles.map(p => ({ name: p.name, key: p.key, color: p.color })), null, 2);
+    const copied = await safeCopyToClipboard(json);
+    if (copied) {
+      alert('✅ Profiles copied to clipboard!');
+    } else {
+      prompt('Copy profiles JSON:', json);
+    }
+  }
+
+  async function importProfilesAction(onComplete) {
+    const input = prompt('Paste key profiles JSON:');
+    if (!input) return;
+    try {
+      const imported = JSON.parse(input);
+      if (Array.isArray(imported)) {
+        let count = 0;
+        for (const item of imported) {
+          if (item.key) {
+            await addProfile(item.name || 'Shared Key', item.key, item.color || '#0284c7');
+            count++;
+          }
+        }
+        alert(`✅ Imported ${count} profile(s)!`);
+        if (onComplete) onComplete();
+        reprocessAllMessages();
+      } else {
+        alert('❌ Invalid JSON format: Expected a JSON array.');
+      }
+    } catch (e) {
+      alert('❌ Invalid JSON format.');
+    }
+  }
+
+  // --- GITHUB RELEASES UPDATE CHECKER ---
+  const GITHUB_REPO = 'Aninda7479/ScalerLiveClassEncryptedChat';
+  const GITHUB_RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+  const CURRENT_VERSION = '1.4.0';
+
+  function parseVersion(v) {
+    if (!v) return [0];
+    return String(v).replace(/^v/, '').split('.').map(x => parseInt(x, 10) || 0);
+  }
+
+  function isNewerVersion(remote, current) {
+    const r = parseVersion(remote);
+    const c = parseVersion(current);
+    const maxLen = Math.max(r.length, c.length);
+    for (let i = 0; i < maxLen; i++) {
+      const rVal = r[i] || 0;
+      const cVal = c[i] || 0;
+      if (rVal > cVal) return true;
+      if (rVal < cVal) return false;
+    }
+    return false;
+  }
+
+  async function checkForUserscriptUpdate(manual = false) {
+    try {
+      const res = await fetch(GITHUB_RELEASES_URL, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.ok) {
+        const release = await res.json();
+        const remoteTag = release.tag_name || release.name || '';
+        if (isNewerVersion(remoteTag, CURRENT_VERSION)) {
+          const cleanVer = remoteTag.replace(/^v/, '');
+          const updateMsg = `🚀 New version v${cleanVer} is available on GitHub!\n\nClick OK to open the update link.`;
+          if (confirm(updateMsg)) {
+            window.open(`https://raw.githubusercontent.com/${GITHUB_REPO}/main/scaler-encrypted-chat.user.js`, '_blank');
+          }
+          return { hasUpdate: true, version: cleanVer };
+        } else if (manual) {
+          alert(`✅ You are using the latest version of Scaler Encrypted Chat (v${CURRENT_VERSION}).`);
+          return { hasUpdate: false, version: CURRENT_VERSION };
+        }
+      } else if (manual) {
+        alert(`⚠️ GitHub returned HTTP ${res.status}. Please check releases page manually.`);
+      }
+    } catch (err) {
+      if (manual) alert('⚠️ Could not connect to GitHub. Please check releases page manually.');
+    }
+    return { hasUpdate: false };
+  }
+
+  function registerUserscriptMenuCommands() {
+    if (typeof GM_registerMenuCommand !== 'undefined') {
+      try {
+        GM_registerMenuCommand('⚙️ Key Profiles & Settings', openProfilesModal);
+        GM_registerMenuCommand('📋 Export Key Profiles', exportProfilesAction);
+        GM_registerMenuCommand('📥 Import Key Profiles', () => importProfilesAction());
+        GM_registerMenuCommand('🔄 Check for Updates', () => checkForUserscriptUpdate(true));
+      } catch (e) {}
+    }
   }
 
   function escapeHtml(str) {
@@ -1636,7 +1813,15 @@
 
   async function init() {
     await initProfiles();
+    setupStorageSync();
+    registerUserscriptMenuCommands();
     setupLiveObserver();
+  }
+
+  // Expose test helpers for offline testbed safely inside the scope
+  if (typeof window !== 'undefined') {
+    window.scalerEncryptTextTest = encryptText;
+    window.scalerSplitChunksTest = splitDataIntoChunks;
   }
 
   if (document.readyState === 'loading') {

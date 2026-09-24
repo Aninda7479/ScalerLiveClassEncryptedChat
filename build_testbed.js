@@ -190,11 +190,8 @@ const simulationScript = `
 </script>
 `;
 
-// Expose test helpers in the user script
-const modifiedScript = scriptContent + '\nwindow.scalerEncryptTextTest = encryptText;\nwindow.scalerSplitChunksTest = splitDataIntoChunks;\n';
-
 // Insert simulation scripts right before </body>
-html = html.replace('</body>', simulationScript + '\n<script>\n' + modifiedScript + '\n</script>\n</body>');
+html = html.replace('</body>', simulationScript + '\n<script>\n' + scriptContent + '\n</script>\n</body>');
 
 fs.writeFileSync('test-scaler-chat.html', html, 'utf8');
 console.log('Created test-scaler-chat.html successfully!');

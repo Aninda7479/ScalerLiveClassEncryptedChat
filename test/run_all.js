@@ -6,7 +6,8 @@ const path = require('path');
 
 const testSuites = [
   { name: 'Crypto Engine Tests', file: 'test_crypto.js' },
-  { name: 'Expanded Edge-Case Tests', file: 'test_expanded.js' }
+  { name: 'Expanded Edge-Case Tests', file: 'test_expanded.js' },
+  { name: 'Userscript Parity & Sync Tests', file: 'test_userscript_sync.js' }
 ];
 
 console.log('========================================================');

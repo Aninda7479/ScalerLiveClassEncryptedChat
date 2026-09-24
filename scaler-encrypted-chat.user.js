@@ -2,17 +2,24 @@
 // @name         Scaler Academy - Encrypted Private Chat
 // @namespace    https://scaler.com/
 // @version      1.4.0
-// @description  Clean, Adaptive End-to-End Encrypted Private Chat for Scaler Academy. Fixed key selection, high-contrast menus, key reveal toggle, auto-decryption, and encrypted image/GIF sharing with lightbox viewer.
+// @description  End-to-End Encrypted Private Chat in Scaler Academy Classrooms. Support for encrypted image & GIF sharing, password profiles, one-click encryption, and live auto-decryption.
 // @author       Aninda
 // @homepageURL  https://github.com/Aninda7479/ScalerLiveClassEncryptedChat
 // @updateURL    https://raw.githubusercontent.com/Aninda7479/ScalerLiveClassEncryptedChat/main/scaler-encrypted-chat.user.js
 // @downloadURL  https://raw.githubusercontent.com/Aninda7479/ScalerLiveClassEncryptedChat/main/scaler-encrypted-chat.user.js
-// @match        https://www.scaler.com/academy/mentee-dashboard/class/*
-// @match        https://*.scaler.com/*
+// @match        *://scaler.com/*
+// @match        *://*.scaler.com/*
 // @match        file://*/*page.html*
 // @match        file://*/*test-scaler-chat.html*
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_addValueChangeListener
+// @grant        GM_addStyle
+// @grant        GM_setClipboard
+// @grant        GM_registerMenuCommand
+// @grant        GM_xmlhttpRequest
+// @connect      api.github.com
+// @connect      raw.githubusercontent.com
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -22,14 +29,19 @@
   // --- STYLES INJECTION ---
   function injectStyles() {
     if (document.getElementById('scaler-enc-robust-styles')) return;
+    if (typeof GM_addStyle !== 'undefined') {
+      try {
+        GM_addStyle("/* Scaler Encrypted Chat - Clean, High-Contrast & Adaptive Stylesheet */\n\n.chat-input__controls {\n  display: flex !important;\n  justify-content: space-between !important;\n  align-items: center !important;\n}\n\n.scaler-enc-controls-wrapper {\n  display: inline-flex !important;\n  align-items: center !important;\n  margin-left: auto !important;\n  white-space: nowrap !important;\n  flex-shrink: 0 !important;\n}\n\n.scaler-enc-pill-btn {\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  padding: 3px 10px !important;\n  border-radius: 14px !important;\n  background: rgba(100, 116, 139, 0.15) !important;\n  color: inherit !important;\n  font-size: 11px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n  border: 1px solid rgba(100, 116, 139, 0.3) !important;\n  transition: all 0.15s ease !important;\n  line-height: 1.2 !important;\n  user-select: none !important;\n  white-space: nowrap !important;\n  flex-shrink: 0 !important;\n}\n\n.scaler-enc-pill-btn:hover {\n  background: rgba(100, 116, 139, 0.25) !important;\n  border-color: rgba(100, 116, 139, 0.45) !important;\n}\n\n.scaler-enc-color-dot {\n  width: 8px !important;\n  height: 8px !important;\n  border-radius: 50% !important;\n  display: inline-block !important;\n  flex-shrink: 0 !important;\n}\n\n#scaler-enc-current-name {\n  white-space: nowrap !important;\n  display: inline-block !important;\n}\n\n/* Floating Dropdown attached directly to body with guaranteed solid contrast */\n#scaler-enc-floating-menu {\n  position: fixed !important;\n  min-width: 190px !important;\n  width: 190px !important;\n  background: #0f172a !important;\n  color: #f8fafc !important;\n  border: 1px solid #334155 !important;\n  border-radius: 8px !important;\n  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.6), 0 6px 12px -2px rgba(0, 0, 0, 0.4) !important;\n  padding: 6px !important;\n  z-index: 2147483647 !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n  font-size: 12px !important;\n  box-sizing: border-box !important;\n  display: none;\n}\n\n#scaler-enc-floating-menu * {\n  box-sizing: border-box !important;\n}\n\n.scaler-enc-menu-header {\n  font-size: 10px !important;\n  font-weight: 700 !important;\n  color: #94a3b8 !important;\n  padding: 4px 8px !important;\n  text-transform: uppercase !important;\n  letter-spacing: 0.5px !important;\n}\n\n.scaler-enc-menu-item {\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  padding: 7px 9px !important;\n  border-radius: 6px !important;\n  cursor: pointer !important;\n  transition: background 0.12s !important;\n  color: #f1f5f9 !important;\n  background: transparent !important;\n  margin-bottom: 2px !important;\n}\n\n.scaler-enc-menu-item:hover {\n  background: #1e293b !important;\n  color: #ffffff !important;\n}\n\n.scaler-enc-menu-item.active {\n  background: rgba(56, 189, 248, 0.18) !important;\n  color: #38bdf8 !important;\n  font-weight: 600 !important;\n}\n\n.scaler-enc-menu-divider {\n  height: 1px !important;\n  background: #334155 !important;\n  margin: 5px 0 !important;\n}\n\n.scaler-enc-menu-btn-settings {\n  color: #38bdf8 !important;\n  font-weight: 600 !important;\n}\n\n/* Lock Send Button */\n.scaler-enc-lock-btn {\n  display: inline-flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  width: 32px !important;\n  height: 32px !important;\n  border-radius: 4px !important;\n  background: transparent !important;\n  color: #0284c7 !important;\n  border: 1px solid rgba(2, 132, 199, 0.35) !important;\n  cursor: pointer !important;\n  transition: all 0.15s ease !important;\n  margin-left: 4px !important;\n  padding: 0 !important;\n}\n\n.scaler-enc-lock-btn:hover {\n  background: #0284c7 !important;\n  color: #ffffff !important;\n  border-color: #0284c7 !important;\n  transform: scale(1.05) !important;\n}\n\n.scaler-enc-lock-btn:active {\n  transform: scale(0.96) !important;\n}\n\n/* Decrypted Message Inside Bubble */\n.scaler-enc-clean-msg {\n  display: block !important;\n  margin: 2px 0 !important;\n}\n\n.scaler-enc-badge-row {\n  display: flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  margin-bottom: 3px !important;\n}\n\n.scaler-enc-chip {\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 4px !important;\n  padding: 1px 7px !important;\n  border-radius: 10px !important;\n  font-size: 10px !important;\n  font-weight: 700 !important;\n  letter-spacing: 0.3px !important;\n  line-height: 1.4 !important;\n}\n\n.scaler-enc-raw-toggle {\n  font-size: 9px !important;\n  opacity: 0.5 !important;\n  cursor: pointer !important;\n  user-select: none !important;\n  transition: opacity 0.15s !important;\n}\n\n.scaler-enc-raw-toggle:hover {\n  opacity: 0.9 !important;\n  text-decoration: underline !important;\n}\n\n.scaler-enc-content {\n  font-size: inherit !important;\n  line-height: inherit !important;\n  color: inherit !important;\n  white-space: pre-wrap !important;\n  word-break: break-word !important;\n}\n\n.scaler-enc-raw-text {\n  margin-top: 4px !important;\n  padding: 4px 6px !important;\n  background: rgba(0, 0, 0, 0.08) !important;\n  border-radius: 4px !important;\n  font-family: monospace !important;\n  font-size: 10px !important;\n  color: inherit !important;\n  opacity: 0.75 !important;\n  word-break: break-all !important;\n}\n\n.scaler-enc-locked-msg {\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  padding: 3px 8px !important;\n  border-radius: 6px !important;\n  background: rgba(245, 158, 11, 0.12) !important;\n  border: 1px solid rgba(245, 158, 11, 0.3) !important;\n  color: #b45309 !important;\n  font-size: 11px !important;\n}\n\n.scaler-enc-unlock-link {\n  background: #d97706 !important;\n  color: #fff !important;\n  border: none !important;\n  padding: 2px 6px !important;\n  border-radius: 3px !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n}\n\n/* Modal */\n.scaler-enc-modal-overlay {\n  position: fixed !important;\n  top: 0 !important;\n  left: 0 !important;\n  right: 0 !important;\n  bottom: 0 !important;\n  background: rgba(15, 23, 42, 0.65) !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  z-index: 2147483647 !important;\n  backdrop-filter: blur(3px) !important;\n}\n\n.scaler-enc-modal {\n  background: #0f172a !important;\n  border: 1px solid #334155 !important;\n  border-radius: 12px !important;\n  width: 360px !important;\n  max-width: 92vw !important;\n  max-height: 85vh !important;\n  overflow-y: auto !important;\n  color: #f1f5f9 !important;\n  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n}\n\n.scaler-enc-modal-header {\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  padding: 12px 16px !important;\n  border-bottom: 1px solid #1e293b !important;\n}\n\n.scaler-enc-modal-title {\n  font-size: 14px !important;\n  font-weight: 700 !important;\n  display: flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  color: #38bdf8 !important;\n}\n\n.scaler-enc-modal-close {\n  background: transparent !important;\n  border: none !important;\n  color: #94a3b8 !important;\n  font-size: 16px !important;\n  cursor: pointer !important;\n}\n\n.scaler-enc-modal-body {\n  padding: 14px 16px !important;\n}\n\n.scaler-enc-modal-card {\n  background: #1e293b !important;\n  border: 1px solid #334155 !important;\n  border-radius: 8px !important;\n  padding: 8px 10px !important;\n  margin-bottom: 6px !important;\n}\n\n.scaler-enc-modal-card.active {\n  border-color: #38bdf8 !important;\n  background: #17253b !important;\n}\n\n.scaler-enc-key-box {\n  display: flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  background: rgba(0, 0, 0, 0.25) !important;\n  padding: 3px 8px !important;\n  border-radius: 4px !important;\n  font-size: 11px !important;\n  margin-top: 5px !important;\n}\n\n/* Image Attachment & Media Buttons */\n.scaler-enc-attach-btn {\n  display: inline-flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  width: 32px !important;\n  height: 32px !important;\n  border-radius: 4px !important;\n  background: transparent !important;\n  color: #38bdf8 !important;\n  border: 1px solid rgba(56, 189, 248, 0.35) !important;\n  cursor: pointer !important;\n  transition: all 0.15s ease !important;\n  margin-left: 4px !important;\n  padding: 0 !important;\n}\n\n.scaler-enc-attach-btn:hover {\n  background: #38bdf8 !important;\n  color: #0f172a !important;\n  border-color: #38bdf8 !important;\n  transform: scale(1.05) !important;\n}\n\n.scaler-enc-attach-btn:active {\n  transform: scale(0.96) !important;\n}\n\n/* Drag and Drop Zone Overlay */\n.scaler-enc-drop-active {\n  position: relative !important;\n}\n\n.scaler-enc-drop-active::after {\n  content: \"📁 Drop Image or GIF here to Encrypt & Send 🔒\" !important;\n  position: absolute !important;\n  inset: 0 !important;\n  background: rgba(15, 23, 42, 0.92) !important;\n  border: 2px dashed #38bdf8 !important;\n  border-radius: 8px !important;\n  color: #38bdf8 !important;\n  font-size: 13px !important;\n  font-weight: 700 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  z-index: 99999 !important;\n  pointer-events: none !important;\n  box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.25) !important;\n}\n\n/* Staging Bar above Textarea */\n.scaler-enc-image-stage {\n  display: flex !important;\n  flex-direction: column !important;\n  gap: 8px !important;\n  background: #0f172a !important;\n  border: 1px solid #334155 !important;\n  border-bottom: 2px solid #0284c7 !important;\n  border-radius: 8px 8px 0 0 !important;\n  padding: 10px 12px !important;\n  margin-bottom: 4px !important;\n  color: #f8fafc !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n  animation: scalerEncSlideDown 0.2s ease-out !important;\n}\n\n@keyframes scalerEncSlideDown {\n  from { opacity: 0; transform: translateY(-8px); }\n  to { opacity: 1; transform: translateY(0); }\n}\n\n.scaler-enc-stage-main {\n  display: flex !important;\n  align-items: center !important;\n  gap: 12px !important;\n}\n\n.scaler-enc-stage-thumb-box {\n  position: relative !important;\n  width: 58px !important;\n  height: 58px !important;\n  border-radius: 6px !important;\n  overflow: hidden !important;\n  border: 1px solid #334155 !important;\n  background: #1e293b !important;\n  flex-shrink: 0 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n}\n\n.scaler-enc-stage-thumb {\n  width: 100% !important;\n  height: 100% !important;\n  object-fit: contain !important;\n}\n\n.scaler-enc-stage-info {\n  flex: 1 !important;\n  display: flex !important;\n  flex-direction: column !important;\n  gap: 4px !important;\n  overflow: hidden !important;\n}\n\n.scaler-enc-stage-title-row {\n  display: flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n}\n\n.scaler-enc-stage-title {\n  font-size: 12px !important;\n  font-weight: 600 !important;\n  color: #f1f5f9 !important;\n}\n\n.scaler-enc-badge {\n  font-size: 9px !important;\n  font-weight: 700 !important;\n  padding: 1px 5px !important;\n  border-radius: 4px !important;\n  text-transform: uppercase !important;\n  letter-spacing: 0.5px !important;\n}\n\n.scaler-enc-badge-gif {\n  background: #ec4899 !important;\n  color: #ffffff !important;\n}\n\n.scaler-enc-badge-size {\n  background: #1e293b !important;\n  color: #94a3b8 !important;\n  border: 1px solid #334155 !important;\n}\n\n.scaler-enc-badge-chunk {\n  background: #f59e0b !important;\n  color: #1e1b4b !important;\n}\n\n.scaler-enc-stage-caption-input {\n  width: 100% !important;\n  background: #1e293b !important;\n  border: 1px solid #334155 !important;\n  border-radius: 5px !important;\n  color: #f8fafc !important;\n  padding: 5px 8px !important;\n  font-size: 11px !important;\n  box-sizing: border-box !important;\n}\n\n.scaler-enc-stage-caption-input:focus {\n  outline: none !important;\n  border-color: #38bdf8 !important;\n}\n\n.scaler-enc-stage-actions {\n  display: flex !important;\n  align-items: center !important;\n  gap: 8px !important;\n  margin-top: 2px !important;\n}\n\n.scaler-enc-stage-send-btn {\n  background: #0284c7 !important;\n  color: #ffffff !important;\n  border: none !important;\n  border-radius: 5px !important;\n  padding: 6px 12px !important;\n  font-size: 11px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 5px !important;\n  transition: background 0.15s ease !important;\n}\n\n.scaler-enc-stage-send-btn:hover {\n  background: #0369a1 !important;\n}\n\n.scaler-enc-stage-cancel-btn {\n  background: transparent !important;\n  color: #94a3b8 !important;\n  border: 1px solid #334155 !important;\n  border-radius: 5px !important;\n  padding: 5px 10px !important;\n  font-size: 11px !important;\n  cursor: pointer !important;\n}\n\n.scaler-enc-stage-cancel-btn:hover {\n  color: #f1f5f9 !important;\n  background: #1e293b !important;\n}\n\n.scaler-enc-stage-warning {\n  background: rgba(245, 158, 11, 0.15) !important;\n  border: 1px solid rgba(245, 158, 11, 0.4) !important;\n  border-radius: 5px !important;\n  padding: 6px 10px !important;\n  font-size: 11px !important;\n  color: #fbbf24 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  gap: 8px !important;\n}\n\n.scaler-enc-stage-warning button {\n  background: #d97706 !important;\n  color: #ffffff !important;\n  border: none !important;\n  padding: 3px 8px !important;\n  border-radius: 4px !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n}\n\n/* Decrypted Chat Thumbnail */\n.scaler-enc-thumb-wrapper {\n  margin-top: 6px !important;\n  position: relative !important;\n  display: inline-block !important;\n  border-radius: 8px !important;\n  overflow: hidden !important;\n  background: #090d16 !important;\n  border: 1px solid rgba(255, 255, 255, 0.12) !important;\n  cursor: pointer !important;\n  transition: transform 0.15s ease, box-shadow 0.15s ease !important;\n  max-width: 100% !important;\n}\n\n.scaler-enc-thumb-wrapper:hover {\n  transform: translateY(-1px) !important;\n  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45) !important;\n  border-color: #38bdf8 !important;\n}\n\n.scaler-enc-thumb-img {\n  display: block !important;\n  max-height: 220px !important;\n  max-width: 100% !important;\n  object-fit: contain !important;\n  background: repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 16px 16px !important;\n}\n\n.scaler-enc-thumb-overlay {\n  position: absolute !important;\n  inset: 0 !important;\n  background: rgba(0, 0, 0, 0.25) !important;\n  opacity: 0 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  color: #ffffff !important;\n  font-size: 18px !important;\n  transition: opacity 0.15s ease !important;\n}\n\n.scaler-enc-thumb-wrapper:hover .scaler-enc-thumb-overlay {\n  opacity: 1 !important;\n}\n\n.scaler-enc-gif-badge {\n  position: absolute !important;\n  top: 6px !important;\n  left: 6px !important;\n  background: rgba(236, 72, 153, 0.9) !important;\n  color: #ffffff !important;\n  font-size: 9px !important;\n  font-weight: 800 !important;\n  padding: 2px 6px !important;\n  border-radius: 4px !important;\n  letter-spacing: 0.5px !important;\n  pointer-events: none !important;\n}\n\n.scaler-enc-img-meta {\n  padding: 4px 8px !important;\n  background: rgba(15, 23, 42, 0.85) !important;\n  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;\n  font-size: 10px !important;\n  color: #94a3b8 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  gap: 8px !important;\n}\n\n.scaler-enc-image-caption {\n  margin-top: 6px !important;\n  font-size: 12px !important;\n  line-height: 1.4 !important;\n  color: #f1f5f9 !important;\n  word-break: break-word !important;\n}\n\n/* Multi-chunk Receiving Progress */\n.scaler-enc-chunk-progress {\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 8px !important;\n  padding: 8px 12px !important;\n  background: #1e293b !important;\n  border: 1px dashed #38bdf8 !important;\n  border-radius: 6px !important;\n  color: #38bdf8 !important;\n  font-size: 11px !important;\n  font-weight: 500 !important;\n  margin-top: 4px !important;\n  animation: scalerEncPulse 1.5s infinite !important;\n}\n\n@keyframes scalerEncPulse {\n  0% { opacity: 0.6; }\n  50% { opacity: 1; }\n  100% { opacity: 0.6; }\n}\n\n/* Fullscreen Lightbox Image Viewer */\n.scaler-enc-lightbox-overlay {\n  position: fixed !important;\n  inset: 0 !important;\n  background: rgba(5, 8, 15, 0.92) !important;\n  backdrop-filter: blur(6px) !important;\n  z-index: 2147483646 !important;\n  display: flex !important;\n  flex-direction: column !important;\n  animation: scalerEncFadeIn 0.15s ease-out !important;\n}\n\n@keyframes scalerEncFadeIn {\n  from { opacity: 0; }\n  to { opacity: 1; }\n}\n\n.scaler-enc-lightbox-header {\n  height: 48px !important;\n  background: rgba(15, 23, 42, 0.9) !important;\n  border-bottom: 1px solid #334155 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  padding: 0 16px !important;\n  color: #f8fafc !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n  flex-shrink: 0 !important;\n}\n\n.scaler-enc-lightbox-title {\n  display: flex !important;\n  align-items: center !important;\n  gap: 8px !important;\n  font-size: 13px !important;\n  font-weight: 600 !important;\n}\n\n.scaler-enc-lightbox-body {\n  flex: 1 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  overflow: hidden !important;\n  position: relative !important;\n  padding: 20px !important;\n  cursor: grab !important;\n}\n\n.scaler-enc-lightbox-body:active {\n  cursor: grabbing !important;\n}\n\n.scaler-enc-lightbox-img {\n  max-width: 90vw !important;\n  max-height: 82vh !important;\n  object-fit: contain !important;\n  border-radius: 6px !important;\n  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7) !important;\n  transition: transform 0.12s ease-out !important;\n  user-select: none !important;\n}\n\n.scaler-enc-lightbox-toolbar {\n  height: 46px !important;\n  background: rgba(15, 23, 42, 0.9) !important;\n  border-top: 1px solid #334155 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  gap: 10px !important;\n  padding: 0 16px !important;\n  flex-shrink: 0 !important;\n}\n\n.scaler-enc-lightbox-btn {\n  background: #1e293b !important;\n  color: #f1f5f9 !important;\n  border: 1px solid #334155 !important;\n  border-radius: 6px !important;\n  padding: 6px 12px !important;\n  font-size: 11px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  transition: all 0.15s ease !important;\n}\n\n.scaler-enc-lightbox-btn:hover {\n  background: #334155 !important;\n  color: #38bdf8 !important;\n  border-color: #38bdf8 !important;\n}\n\n.scaler-enc-lightbox-close {\n  background: transparent !important;\n  color: #94a3b8 !important;\n  border: none !important;\n  font-size: 20px !important;\n  cursor: pointer !important;\n  padding: 4px 8px !important;\n  border-radius: 4px !important;\n}\n\n.scaler-enc-lightbox-close:hover {\n  color: #ef4444 !important;\n  background: rgba(239, 68, 68, 0.1) !important;\n}\n\n/* Toast Notifications */\n.scaler-enc-toast {\n  position: fixed !important;\n  bottom: 24px !important;\n  right: 24px !important;\n  background: #0f172a !important;\n  color: #f8fafc !important;\n  border: 1px solid #38bdf8 !important;\n  border-radius: 8px !important;\n  padding: 10px 16px !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n  font-size: 12px !important;\n  font-weight: 500 !important;\n  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;\n  z-index: 2147483647 !important;\n  animation: scalerEncSlideUp 0.2s ease-out !important;\n  display: flex !important;\n  align-items: center !important;\n  gap: 8px !important;\n}\n\n@keyframes scalerEncSlideUp {\n  from { opacity: 0; transform: translateY(12px); }\n  to { opacity: 1; transform: translateY(0); }\n}\n\n");
+        return;
+      } catch (e) {}
+    }
     const style = document.createElement('style');
     style.id = 'scaler-enc-robust-styles';
     style.textContent = "/* Scaler Encrypted Chat - Clean, High-Contrast & Adaptive Stylesheet */\n\n.chat-input__controls {\n  display: flex !important;\n  justify-content: space-between !important;\n  align-items: center !important;\n}\n\n.scaler-enc-controls-wrapper {\n  display: inline-flex !important;\n  align-items: center !important;\n  margin-left: auto !important;\n  white-space: nowrap !important;\n  flex-shrink: 0 !important;\n}\n\n.scaler-enc-pill-btn {\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  padding: 3px 10px !important;\n  border-radius: 14px !important;\n  background: rgba(100, 116, 139, 0.15) !important;\n  color: inherit !important;\n  font-size: 11px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n  border: 1px solid rgba(100, 116, 139, 0.3) !important;\n  transition: all 0.15s ease !important;\n  line-height: 1.2 !important;\n  user-select: none !important;\n  white-space: nowrap !important;\n  flex-shrink: 0 !important;\n}\n\n.scaler-enc-pill-btn:hover {\n  background: rgba(100, 116, 139, 0.25) !important;\n  border-color: rgba(100, 116, 139, 0.45) !important;\n}\n\n.scaler-enc-color-dot {\n  width: 8px !important;\n  height: 8px !important;\n  border-radius: 50% !important;\n  display: inline-block !important;\n  flex-shrink: 0 !important;\n}\n\n#scaler-enc-current-name {\n  white-space: nowrap !important;\n  display: inline-block !important;\n}\n\n/* Floating Dropdown attached directly to body with guaranteed solid contrast */\n#scaler-enc-floating-menu {\n  position: fixed !important;\n  min-width: 190px !important;\n  width: 190px !important;\n  background: #0f172a !important;\n  color: #f8fafc !important;\n  border: 1px solid #334155 !important;\n  border-radius: 8px !important;\n  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.6), 0 6px 12px -2px rgba(0, 0, 0, 0.4) !important;\n  padding: 6px !important;\n  z-index: 2147483647 !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n  font-size: 12px !important;\n  box-sizing: border-box !important;\n  display: none;\n}\n\n#scaler-enc-floating-menu * {\n  box-sizing: border-box !important;\n}\n\n.scaler-enc-menu-header {\n  font-size: 10px !important;\n  font-weight: 700 !important;\n  color: #94a3b8 !important;\n  padding: 4px 8px !important;\n  text-transform: uppercase !important;\n  letter-spacing: 0.5px !important;\n}\n\n.scaler-enc-menu-item {\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  padding: 7px 9px !important;\n  border-radius: 6px !important;\n  cursor: pointer !important;\n  transition: background 0.12s !important;\n  color: #f1f5f9 !important;\n  background: transparent !important;\n  margin-bottom: 2px !important;\n}\n\n.scaler-enc-menu-item:hover {\n  background: #1e293b !important;\n  color: #ffffff !important;\n}\n\n.scaler-enc-menu-item.active {\n  background: rgba(56, 189, 248, 0.18) !important;\n  color: #38bdf8 !important;\n  font-weight: 600 !important;\n}\n\n.scaler-enc-menu-divider {\n  height: 1px !important;\n  background: #334155 !important;\n  margin: 5px 0 !important;\n}\n\n.scaler-enc-menu-btn-settings {\n  color: #38bdf8 !important;\n  font-weight: 600 !important;\n}\n\n/* Lock Send Button */\n.scaler-enc-lock-btn {\n  display: inline-flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  width: 32px !important;\n  height: 32px !important;\n  border-radius: 4px !important;\n  background: transparent !important;\n  color: #0284c7 !important;\n  border: 1px solid rgba(2, 132, 199, 0.35) !important;\n  cursor: pointer !important;\n  transition: all 0.15s ease !important;\n  margin-left: 4px !important;\n  padding: 0 !important;\n}\n\n.scaler-enc-lock-btn:hover {\n  background: #0284c7 !important;\n  color: #ffffff !important;\n  border-color: #0284c7 !important;\n  transform: scale(1.05) !important;\n}\n\n.scaler-enc-lock-btn:active {\n  transform: scale(0.96) !important;\n}\n\n/* Decrypted Message Inside Bubble */\n.scaler-enc-clean-msg {\n  display: block !important;\n  margin: 2px 0 !important;\n}\n\n.scaler-enc-badge-row {\n  display: flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  margin-bottom: 3px !important;\n}\n\n.scaler-enc-chip {\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 4px !important;\n  padding: 1px 7px !important;\n  border-radius: 10px !important;\n  font-size: 10px !important;\n  font-weight: 700 !important;\n  letter-spacing: 0.3px !important;\n  line-height: 1.4 !important;\n}\n\n.scaler-enc-raw-toggle {\n  font-size: 9px !important;\n  opacity: 0.5 !important;\n  cursor: pointer !important;\n  user-select: none !important;\n  transition: opacity 0.15s !important;\n}\n\n.scaler-enc-raw-toggle:hover {\n  opacity: 0.9 !important;\n  text-decoration: underline !important;\n}\n\n.scaler-enc-content {\n  font-size: inherit !important;\n  line-height: inherit !important;\n  color: inherit !important;\n  white-space: pre-wrap !important;\n  word-break: break-word !important;\n}\n\n.scaler-enc-raw-text {\n  margin-top: 4px !important;\n  padding: 4px 6px !important;\n  background: rgba(0, 0, 0, 0.08) !important;\n  border-radius: 4px !important;\n  font-family: monospace !important;\n  font-size: 10px !important;\n  color: inherit !important;\n  opacity: 0.75 !important;\n  word-break: break-all !important;\n}\n\n.scaler-enc-locked-msg {\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  padding: 3px 8px !important;\n  border-radius: 6px !important;\n  background: rgba(245, 158, 11, 0.12) !important;\n  border: 1px solid rgba(245, 158, 11, 0.3) !important;\n  color: #b45309 !important;\n  font-size: 11px !important;\n}\n\n.scaler-enc-unlock-link {\n  background: #d97706 !important;\n  color: #fff !important;\n  border: none !important;\n  padding: 2px 6px !important;\n  border-radius: 3px !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n}\n\n/* Modal */\n.scaler-enc-modal-overlay {\n  position: fixed !important;\n  top: 0 !important;\n  left: 0 !important;\n  right: 0 !important;\n  bottom: 0 !important;\n  background: rgba(15, 23, 42, 0.65) !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  z-index: 2147483647 !important;\n  backdrop-filter: blur(3px) !important;\n}\n\n.scaler-enc-modal {\n  background: #0f172a !important;\n  border: 1px solid #334155 !important;\n  border-radius: 12px !important;\n  width: 360px !important;\n  max-width: 92vw !important;\n  max-height: 85vh !important;\n  overflow-y: auto !important;\n  color: #f1f5f9 !important;\n  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n}\n\n.scaler-enc-modal-header {\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  padding: 12px 16px !important;\n  border-bottom: 1px solid #1e293b !important;\n}\n\n.scaler-enc-modal-title {\n  font-size: 14px !important;\n  font-weight: 700 !important;\n  display: flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  color: #38bdf8 !important;\n}\n\n.scaler-enc-modal-close {\n  background: transparent !important;\n  border: none !important;\n  color: #94a3b8 !important;\n  font-size: 16px !important;\n  cursor: pointer !important;\n}\n\n.scaler-enc-modal-body {\n  padding: 14px 16px !important;\n}\n\n.scaler-enc-modal-card {\n  background: #1e293b !important;\n  border: 1px solid #334155 !important;\n  border-radius: 8px !important;\n  padding: 8px 10px !important;\n  margin-bottom: 6px !important;\n}\n\n.scaler-enc-modal-card.active {\n  border-color: #38bdf8 !important;\n  background: #17253b !important;\n}\n\n.scaler-enc-key-box {\n  display: flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  background: rgba(0, 0, 0, 0.25) !important;\n  padding: 3px 8px !important;\n  border-radius: 4px !important;\n  font-size: 11px !important;\n  margin-top: 5px !important;\n}\n\n/* Image Attachment & Media Buttons */\n.scaler-enc-attach-btn {\n  display: inline-flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  width: 32px !important;\n  height: 32px !important;\n  border-radius: 4px !important;\n  background: transparent !important;\n  color: #38bdf8 !important;\n  border: 1px solid rgba(56, 189, 248, 0.35) !important;\n  cursor: pointer !important;\n  transition: all 0.15s ease !important;\n  margin-left: 4px !important;\n  padding: 0 !important;\n}\n\n.scaler-enc-attach-btn:hover {\n  background: #38bdf8 !important;\n  color: #0f172a !important;\n  border-color: #38bdf8 !important;\n  transform: scale(1.05) !important;\n}\n\n.scaler-enc-attach-btn:active {\n  transform: scale(0.96) !important;\n}\n\n/* Drag and Drop Zone Overlay */\n.scaler-enc-drop-active {\n  position: relative !important;\n}\n\n.scaler-enc-drop-active::after {\n  content: \"📁 Drop Image or GIF here to Encrypt & Send 🔒\" !important;\n  position: absolute !important;\n  inset: 0 !important;\n  background: rgba(15, 23, 42, 0.92) !important;\n  border: 2px dashed #38bdf8 !important;\n  border-radius: 8px !important;\n  color: #38bdf8 !important;\n  font-size: 13px !important;\n  font-weight: 700 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  z-index: 99999 !important;\n  pointer-events: none !important;\n  box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.25) !important;\n}\n\n/* Staging Bar above Textarea */\n.scaler-enc-image-stage {\n  display: flex !important;\n  flex-direction: column !important;\n  gap: 8px !important;\n  background: #0f172a !important;\n  border: 1px solid #334155 !important;\n  border-bottom: 2px solid #0284c7 !important;\n  border-radius: 8px 8px 0 0 !important;\n  padding: 10px 12px !important;\n  margin-bottom: 4px !important;\n  color: #f8fafc !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n  animation: scalerEncSlideDown 0.2s ease-out !important;\n}\n\n@keyframes scalerEncSlideDown {\n  from { opacity: 0; transform: translateY(-8px); }\n  to { opacity: 1; transform: translateY(0); }\n}\n\n.scaler-enc-stage-main {\n  display: flex !important;\n  align-items: center !important;\n  gap: 12px !important;\n}\n\n.scaler-enc-stage-thumb-box {\n  position: relative !important;\n  width: 58px !important;\n  height: 58px !important;\n  border-radius: 6px !important;\n  overflow: hidden !important;\n  border: 1px solid #334155 !important;\n  background: #1e293b !important;\n  flex-shrink: 0 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n}\n\n.scaler-enc-stage-thumb {\n  width: 100% !important;\n  height: 100% !important;\n  object-fit: contain !important;\n}\n\n.scaler-enc-stage-info {\n  flex: 1 !important;\n  display: flex !important;\n  flex-direction: column !important;\n  gap: 4px !important;\n  overflow: hidden !important;\n}\n\n.scaler-enc-stage-title-row {\n  display: flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n}\n\n.scaler-enc-stage-title {\n  font-size: 12px !important;\n  font-weight: 600 !important;\n  color: #f1f5f9 !important;\n}\n\n.scaler-enc-badge {\n  font-size: 9px !important;\n  font-weight: 700 !important;\n  padding: 1px 5px !important;\n  border-radius: 4px !important;\n  text-transform: uppercase !important;\n  letter-spacing: 0.5px !important;\n}\n\n.scaler-enc-badge-gif {\n  background: #ec4899 !important;\n  color: #ffffff !important;\n}\n\n.scaler-enc-badge-size {\n  background: #1e293b !important;\n  color: #94a3b8 !important;\n  border: 1px solid #334155 !important;\n}\n\n.scaler-enc-badge-chunk {\n  background: #f59e0b !important;\n  color: #1e1b4b !important;\n}\n\n.scaler-enc-stage-caption-input {\n  width: 100% !important;\n  background: #1e293b !important;\n  border: 1px solid #334155 !important;\n  border-radius: 5px !important;\n  color: #f8fafc !important;\n  padding: 5px 8px !important;\n  font-size: 11px !important;\n  box-sizing: border-box !important;\n}\n\n.scaler-enc-stage-caption-input:focus {\n  outline: none !important;\n  border-color: #38bdf8 !important;\n}\n\n.scaler-enc-stage-actions {\n  display: flex !important;\n  align-items: center !important;\n  gap: 8px !important;\n  margin-top: 2px !important;\n}\n\n.scaler-enc-stage-send-btn {\n  background: #0284c7 !important;\n  color: #ffffff !important;\n  border: none !important;\n  border-radius: 5px !important;\n  padding: 6px 12px !important;\n  font-size: 11px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 5px !important;\n  transition: background 0.15s ease !important;\n}\n\n.scaler-enc-stage-send-btn:hover {\n  background: #0369a1 !important;\n}\n\n.scaler-enc-stage-cancel-btn {\n  background: transparent !important;\n  color: #94a3b8 !important;\n  border: 1px solid #334155 !important;\n  border-radius: 5px !important;\n  padding: 5px 10px !important;\n  font-size: 11px !important;\n  cursor: pointer !important;\n}\n\n.scaler-enc-stage-cancel-btn:hover {\n  color: #f1f5f9 !important;\n  background: #1e293b !important;\n}\n\n.scaler-enc-stage-warning {\n  background: rgba(245, 158, 11, 0.15) !important;\n  border: 1px solid rgba(245, 158, 11, 0.4) !important;\n  border-radius: 5px !important;\n  padding: 6px 10px !important;\n  font-size: 11px !important;\n  color: #fbbf24 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  gap: 8px !important;\n}\n\n.scaler-enc-stage-warning button {\n  background: #d97706 !important;\n  color: #ffffff !important;\n  border: none !important;\n  padding: 3px 8px !important;\n  border-radius: 4px !important;\n  font-size: 10px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n}\n\n/* Decrypted Chat Thumbnail */\n.scaler-enc-thumb-wrapper {\n  margin-top: 6px !important;\n  position: relative !important;\n  display: inline-block !important;\n  border-radius: 8px !important;\n  overflow: hidden !important;\n  background: #090d16 !important;\n  border: 1px solid rgba(255, 255, 255, 0.12) !important;\n  cursor: pointer !important;\n  transition: transform 0.15s ease, box-shadow 0.15s ease !important;\n  max-width: 100% !important;\n}\n\n.scaler-enc-thumb-wrapper:hover {\n  transform: translateY(-1px) !important;\n  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45) !important;\n  border-color: #38bdf8 !important;\n}\n\n.scaler-enc-thumb-img {\n  display: block !important;\n  max-height: 220px !important;\n  max-width: 100% !important;\n  object-fit: contain !important;\n  background: repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 16px 16px !important;\n}\n\n.scaler-enc-thumb-overlay {\n  position: absolute !important;\n  inset: 0 !important;\n  background: rgba(0, 0, 0, 0.25) !important;\n  opacity: 0 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  color: #ffffff !important;\n  font-size: 18px !important;\n  transition: opacity 0.15s ease !important;\n}\n\n.scaler-enc-thumb-wrapper:hover .scaler-enc-thumb-overlay {\n  opacity: 1 !important;\n}\n\n.scaler-enc-gif-badge {\n  position: absolute !important;\n  top: 6px !important;\n  left: 6px !important;\n  background: rgba(236, 72, 153, 0.9) !important;\n  color: #ffffff !important;\n  font-size: 9px !important;\n  font-weight: 800 !important;\n  padding: 2px 6px !important;\n  border-radius: 4px !important;\n  letter-spacing: 0.5px !important;\n  pointer-events: none !important;\n}\n\n.scaler-enc-img-meta {\n  padding: 4px 8px !important;\n  background: rgba(15, 23, 42, 0.85) !important;\n  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;\n  font-size: 10px !important;\n  color: #94a3b8 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  gap: 8px !important;\n}\n\n.scaler-enc-image-caption {\n  margin-top: 6px !important;\n  font-size: 12px !important;\n  line-height: 1.4 !important;\n  color: #f1f5f9 !important;\n  word-break: break-word !important;\n}\n\n/* Multi-chunk Receiving Progress */\n.scaler-enc-chunk-progress {\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 8px !important;\n  padding: 8px 12px !important;\n  background: #1e293b !important;\n  border: 1px dashed #38bdf8 !important;\n  border-radius: 6px !important;\n  color: #38bdf8 !important;\n  font-size: 11px !important;\n  font-weight: 500 !important;\n  margin-top: 4px !important;\n  animation: scalerEncPulse 1.5s infinite !important;\n}\n\n@keyframes scalerEncPulse {\n  0% { opacity: 0.6; }\n  50% { opacity: 1; }\n  100% { opacity: 0.6; }\n}\n\n/* Fullscreen Lightbox Image Viewer */\n.scaler-enc-lightbox-overlay {\n  position: fixed !important;\n  inset: 0 !important;\n  background: rgba(5, 8, 15, 0.92) !important;\n  backdrop-filter: blur(6px) !important;\n  z-index: 2147483646 !important;\n  display: flex !important;\n  flex-direction: column !important;\n  animation: scalerEncFadeIn 0.15s ease-out !important;\n}\n\n@keyframes scalerEncFadeIn {\n  from { opacity: 0; }\n  to { opacity: 1; }\n}\n\n.scaler-enc-lightbox-header {\n  height: 48px !important;\n  background: rgba(15, 23, 42, 0.9) !important;\n  border-bottom: 1px solid #334155 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: space-between !important;\n  padding: 0 16px !important;\n  color: #f8fafc !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n  flex-shrink: 0 !important;\n}\n\n.scaler-enc-lightbox-title {\n  display: flex !important;\n  align-items: center !important;\n  gap: 8px !important;\n  font-size: 13px !important;\n  font-weight: 600 !important;\n}\n\n.scaler-enc-lightbox-body {\n  flex: 1 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  overflow: hidden !important;\n  position: relative !important;\n  padding: 20px !important;\n  cursor: grab !important;\n}\n\n.scaler-enc-lightbox-body:active {\n  cursor: grabbing !important;\n}\n\n.scaler-enc-lightbox-img {\n  max-width: 90vw !important;\n  max-height: 82vh !important;\n  object-fit: contain !important;\n  border-radius: 6px !important;\n  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7) !important;\n  transition: transform 0.12s ease-out !important;\n  user-select: none !important;\n}\n\n.scaler-enc-lightbox-toolbar {\n  height: 46px !important;\n  background: rgba(15, 23, 42, 0.9) !important;\n  border-top: 1px solid #334155 !important;\n  display: flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  gap: 10px !important;\n  padding: 0 16px !important;\n  flex-shrink: 0 !important;\n}\n\n.scaler-enc-lightbox-btn {\n  background: #1e293b !important;\n  color: #f1f5f9 !important;\n  border: 1px solid #334155 !important;\n  border-radius: 6px !important;\n  padding: 6px 12px !important;\n  font-size: 11px !important;\n  font-weight: 600 !important;\n  cursor: pointer !important;\n  display: inline-flex !important;\n  align-items: center !important;\n  gap: 6px !important;\n  transition: all 0.15s ease !important;\n}\n\n.scaler-enc-lightbox-btn:hover {\n  background: #334155 !important;\n  color: #38bdf8 !important;\n  border-color: #38bdf8 !important;\n}\n\n.scaler-enc-lightbox-close {\n  background: transparent !important;\n  color: #94a3b8 !important;\n  border: none !important;\n  font-size: 20px !important;\n  cursor: pointer !important;\n  padding: 4px 8px !important;\n  border-radius: 4px !important;\n}\n\n.scaler-enc-lightbox-close:hover {\n  color: #ef4444 !important;\n  background: rgba(239, 68, 68, 0.1) !important;\n}\n\n/* Toast Notifications */\n.scaler-enc-toast {\n  position: fixed !important;\n  bottom: 24px !important;\n  right: 24px !important;\n  background: #0f172a !important;\n  color: #f8fafc !important;\n  border: 1px solid #38bdf8 !important;\n  border-radius: 8px !important;\n  padding: 10px 16px !important;\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif !important;\n  font-size: 12px !important;\n  font-weight: 500 !important;\n  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;\n  z-index: 2147483647 !important;\n  animation: scalerEncSlideUp 0.2s ease-out !important;\n  display: flex !important;\n  align-items: center !important;\n  gap: 8px !important;\n}\n\n@keyframes scalerEncSlideUp {\n  from { opacity: 0; transform: translateY(12px); }\n  to { opacity: 1; transform: translateY(0); }\n}\n\n";
     (document.head || document.documentElement).appendChild(style);
   }
 
-
-  'use strict';
+  injectStyles();
 
   // --- CRYPTO ENGINE ---
   const enc = new TextEncoder();
@@ -164,18 +176,56 @@
     } catch (e) {}
   }
 
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-    chrome.storage.onChanged.addListener((changes) => {
-      if (changes[STORAGE_KEY_PROFILES]) {
-        profiles = changes[STORAGE_KEY_PROFILES].newValue || [];
-        updateUIElements();
-        reprocessAllMessages();
-      }
-      if (changes[STORAGE_KEY_ACTIVE]) {
-        activeProfileId = changes[STORAGE_KEY_ACTIVE].newValue;
-        updateUIElements();
-      }
-    });
+  function setupStorageSync() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes[STORAGE_KEY_PROFILES]) {
+          profiles = changes[STORAGE_KEY_PROFILES].newValue || [];
+          updateUIElements();
+          reprocessAllMessages();
+        }
+        if (changes[STORAGE_KEY_ACTIVE]) {
+          activeProfileId = changes[STORAGE_KEY_ACTIVE].newValue;
+          updateUIElements();
+        }
+      });
+    }
+
+    if (typeof GM_addValueChangeListener !== 'undefined') {
+      try {
+        GM_addValueChangeListener(STORAGE_KEY_PROFILES, (name, oldVal, newVal, remote) => {
+          if (remote && newVal) {
+            profiles = newVal;
+            updateUIElements();
+            reprocessAllMessages();
+          }
+        });
+        GM_addValueChangeListener(STORAGE_KEY_ACTIVE, (name, oldVal, newVal, remote) => {
+          if (remote && newVal !== undefined) {
+            activeProfileId = newVal;
+            updateUIElements();
+          }
+        });
+      } catch (e) {}
+    }
+
+    try {
+      window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY_PROFILES && e.newValue) {
+          try {
+            profiles = JSON.parse(e.newValue);
+            updateUIElements();
+            reprocessAllMessages();
+          } catch (err) {}
+        }
+        if (e.key === STORAGE_KEY_ACTIVE && e.newValue) {
+          try {
+            activeProfileId = JSON.parse(e.newValue);
+            updateUIElements();
+          } catch (err) {}
+        }
+      });
+    } catch (e) {}
   }
 
   // --- PROFILES STATE ---
@@ -1441,11 +1491,24 @@
     });
   }
 
+  let observerScheduled = false;
+
+  function scheduleDOMScan() {
+    if (observerScheduled) return;
+    observerScheduled = true;
+    requestAnimationFrame(() => {
+      observerScheduled = false;
+      injectNativeChatControls();
+      const unread = document.querySelectorAll(
+        '[data-cy="meetings-chat-message"]:not([data-scaler-enc-processed="true"]), .chat-message:not([data-scaler-enc-processed="true"])'
+      );
+      unread.forEach(processChatMessageElement);
+    });
+  }
+
   function setupLiveObserver() {
     const observer = new MutationObserver(() => {
-      injectNativeChatControls();
-      const messages = document.querySelectorAll('[data-cy="meetings-chat-message"], .chat-message');
-      messages.forEach(processChatMessageElement);
+      scheduleDOMScan();
     });
 
     observer.observe(document.body, {
@@ -1453,9 +1516,7 @@
       subtree: true
     });
 
-    injectNativeChatControls();
-    const messages = document.querySelectorAll('[data-cy="meetings-chat-message"], .chat-message');
-    messages.forEach(processChatMessageElement);
+    scheduleDOMScan();
   }
 
   // --- KEY PROFILES MODAL (With Key Reveal Toggle) ---
@@ -1499,6 +1560,8 @@
               <path d="M 248,252 L 264,252 L 268,284 C 268,288 264,292 260,292 L 252,292 C 248,292 244,288 244,284 Z" fill="url(#mCyan)"/>
             </svg>
             <span>Key Profiles</span>
+            <span style="font-size: 10px; color: #64748b; background: #1e293b; padding: 2px 6px; border-radius: 4px; font-weight: normal;">v1.4.0</span>
+            <button id="scaler-enc-check-update-btn" style="background: transparent; border: 1px solid #334155; color: #38bdf8; font-size: 10px; padding: 2px 6px; border-radius: 4px; cursor: pointer;" title="Check GitHub for Updates">Check Update</button>
           </div>
           <button class="scaler-enc-modal-close" id="scaler-enc-modal-close-btn">&times;</button>
         </div>
@@ -1548,6 +1611,9 @@
             <button id="scaler-enc-export-btn" style="flex: 1; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; padding: 6px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">📋 Export</button>
             <button id="scaler-enc-import-btn" style="flex: 1; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; padding: 6px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">📥 Import</button>
           </div>
+          <div style="text-align: center; margin-top: 10px;">
+            <a href="https://github.com/Aninda7479/ScalerLiveClassEncryptedChat/releases" target="_blank" rel="noopener noreferrer" style="color: #64748b; font-size: 10px; text-decoration: none;">GitHub Releases & Updates ↗</a>
+          </div>
         </div>
       `;
 
@@ -1588,13 +1654,14 @@
       });
 
       modal.querySelectorAll('.modal-copy-key').forEach(b => {
-        b.addEventListener('click', () => {
+        b.addEventListener('click', async () => {
           const prof = profiles.find(p => p.id === b.dataset.id);
           if (!prof) return;
-          navigator.clipboard.writeText(prof.key).then(() => {
+          const ok = await safeCopyToClipboard(prof.key);
+          if (ok) {
             b.textContent = '✅';
             setTimeout(() => { b.textContent = '📋'; }, 1200);
-          });
+          }
         });
       });
 
@@ -1618,32 +1685,19 @@
       });
 
       modal.querySelector('#scaler-enc-export-btn').addEventListener('click', () => {
-        const json = JSON.stringify(profiles.map(p => ({ name: p.name, key: p.key, color: p.color })), null, 2);
-        navigator.clipboard.writeText(json).then(() => {
-          alert('✅ Profiles copied to clipboard!');
-        }).catch(() => {
-          prompt('Copy profiles JSON:', json);
-        });
+        exportProfilesAction();
       });
 
-      modal.querySelector('#scaler-enc-import-btn').addEventListener('click', async () => {
-        const input = prompt('Paste key profiles JSON:');
-        if (!input) return;
-        try {
-          const imported = JSON.parse(input);
-          if (Array.isArray(imported)) {
-            for (const item of imported) {
-              if (item.key) {
-                await addProfile(item.name || 'Shared Key', item.key, item.color || '#0284c7');
-              }
-            }
-            alert(`✅ Imported ${imported.length} profile(s)!`);
-            renderModalContent();
-          }
-        } catch (e) {
-          alert('❌ Invalid JSON.');
-        }
+      modal.querySelector('#scaler-enc-import-btn').addEventListener('click', () => {
+        importProfilesAction(() => renderModalContent());
       });
+
+      const checkUpdateBtn = modal.querySelector('#scaler-enc-check-update-btn');
+      if (checkUpdateBtn) {
+        checkUpdateBtn.addEventListener('click', () => {
+          checkForUserscriptUpdate(true);
+        });
+      }
     }
 
     function closeModal() {
@@ -1657,6 +1711,130 @@
     renderModalContent();
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+  }
+
+  // --- SAFE CLIPBOARD & ACTIONS ---
+  async function safeCopyToClipboard(text) {
+    if (typeof GM_setClipboard !== 'undefined') {
+      try {
+        GM_setClipboard(text, 'text');
+        return true;
+      } catch (e) {}
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {}
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (success) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  async function exportProfilesAction() {
+    const json = JSON.stringify(profiles.map(p => ({ name: p.name, key: p.key, color: p.color })), null, 2);
+    const copied = await safeCopyToClipboard(json);
+    if (copied) {
+      alert('✅ Profiles copied to clipboard!');
+    } else {
+      prompt('Copy profiles JSON:', json);
+    }
+  }
+
+  async function importProfilesAction(onComplete) {
+    const input = prompt('Paste key profiles JSON:');
+    if (!input) return;
+    try {
+      const imported = JSON.parse(input);
+      if (Array.isArray(imported)) {
+        let count = 0;
+        for (const item of imported) {
+          if (item.key) {
+            await addProfile(item.name || 'Shared Key', item.key, item.color || '#0284c7');
+            count++;
+          }
+        }
+        alert(`✅ Imported ${count} profile(s)!`);
+        if (onComplete) onComplete();
+        reprocessAllMessages();
+      } else {
+        alert('❌ Invalid JSON format: Expected a JSON array.');
+      }
+    } catch (e) {
+      alert('❌ Invalid JSON format.');
+    }
+  }
+
+  // --- GITHUB RELEASES UPDATE CHECKER ---
+  const GITHUB_REPO = 'Aninda7479/ScalerLiveClassEncryptedChat';
+  const GITHUB_RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+  const CURRENT_VERSION = '1.4.0';
+
+  function parseVersion(v) {
+    if (!v) return [0];
+    return String(v).replace(/^v/, '').split('.').map(x => parseInt(x, 10) || 0);
+  }
+
+  function isNewerVersion(remote, current) {
+    const r = parseVersion(remote);
+    const c = parseVersion(current);
+    const maxLen = Math.max(r.length, c.length);
+    for (let i = 0; i < maxLen; i++) {
+      const rVal = r[i] || 0;
+      const cVal = c[i] || 0;
+      if (rVal > cVal) return true;
+      if (rVal < cVal) return false;
+    }
+    return false;
+  }
+
+  async function checkForUserscriptUpdate(manual = false) {
+    try {
+      const res = await fetch(GITHUB_RELEASES_URL, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.ok) {
+        const release = await res.json();
+        const remoteTag = release.tag_name || release.name || '';
+        if (isNewerVersion(remoteTag, CURRENT_VERSION)) {
+          const cleanVer = remoteTag.replace(/^v/, '');
+          const updateMsg = `🚀 New version v${cleanVer} is available on GitHub!\n\nClick OK to open the update link.`;
+          if (confirm(updateMsg)) {
+            window.open(`https://raw.githubusercontent.com/${GITHUB_REPO}/main/scaler-encrypted-chat.user.js`, '_blank');
+          }
+          return { hasUpdate: true, version: cleanVer };
+        } else if (manual) {
+          alert(`✅ You are using the latest version of Scaler Encrypted Chat (v${CURRENT_VERSION}).`);
+          return { hasUpdate: false, version: CURRENT_VERSION };
+        }
+      } else if (manual) {
+        alert(`⚠️ GitHub returned HTTP ${res.status}. Please check releases page manually.`);
+      }
+    } catch (err) {
+      if (manual) alert('⚠️ Could not connect to GitHub. Please check releases page manually.');
+    }
+    return { hasUpdate: false };
+  }
+
+  function registerUserscriptMenuCommands() {
+    if (typeof GM_registerMenuCommand !== 'undefined') {
+      try {
+        GM_registerMenuCommand('⚙️ Key Profiles & Settings', openProfilesModal);
+        GM_registerMenuCommand('📋 Export Key Profiles', exportProfilesAction);
+        GM_registerMenuCommand('📥 Import Key Profiles', () => importProfilesAction());
+        GM_registerMenuCommand('🔄 Check for Updates', () => checkForUserscriptUpdate(true));
+      } catch (e) {}
+    }
   }
 
   function escapeHtml(str) {
@@ -1676,8 +1854,15 @@
 
   async function init() {
     await initProfiles();
-    injectStyles();
+    setupStorageSync();
+    registerUserscriptMenuCommands();
     setupLiveObserver();
+  }
+
+  // Expose test helpers for offline testbed safely inside the scope
+  if (typeof window !== 'undefined') {
+    window.scalerEncryptTextTest = encryptText;
+    window.scalerSplitChunksTest = splitDataIntoChunks;
   }
 
   if (document.readyState === 'loading') {
@@ -1685,5 +1870,4 @@
   } else {
     init();
   }
-
 })();

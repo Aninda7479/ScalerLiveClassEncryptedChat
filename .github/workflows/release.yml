@@ -16,6 +16,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Userscript and Run Tests
+        run: |
+          node build_userscript.js
+          node build_testbed.js
+          node test/run_all.js
+
       - name: Create Chrome Extension ZIP
         run: |
           cd chrome-extension
