@@ -67,17 +67,29 @@ function isAnimatedGifBytes(bytes) {
 }
 
 // Chunk splitter (mirroring content.js)
-function splitDataIntoChunks(dataUrl, mime, caption, animated, maxChunkChars = 19000) {
+function splitDataIntoChunks(dataUrl, mime, caption, animated, maxChunkChars = 420) {
   const commaIdx = dataUrl.indexOf(',');
   const b64Data = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
-  const totalLen = b64Data.length;
-  const numChunks = Math.ceil(totalLen / maxChunkChars);
-  const chunkId = 'img_test_' + Date.now();
+  const chunkId = 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+
+  const cleanCaption = caption ? caption.trim() : undefined;
+  const parts = [];
+  for (let i = 0; i < b64Data.length; i += maxChunkChars) {
+    parts.push(b64Data.substring(i, i + maxChunkChars));
+  }
+
+  // If final part plus caption would risk pushing JSON length over 600, split the final part
+  if (parts.length > 0 && cleanCaption && (parts[parts.length - 1].length + cleanCaption.length > 440)) {
+    const lastPart = parts.pop();
+    const half = Math.ceil(lastPart.length / 2);
+    parts.push(lastPart.substring(0, half));
+    parts.push(lastPart.substring(half));
+  }
+
+  const numChunks = parts.length;
   const payloads = [];
 
   for (let seq = 1; seq <= numChunks; seq++) {
-    const start = (seq - 1) * maxChunkChars;
-    const part = b64Data.substring(start, start + maxChunkChars);
     payloads.push({
       v: 1,
       type: 'image_chunk',
@@ -85,9 +97,9 @@ function splitDataIntoChunks(dataUrl, mime, caption, animated, maxChunkChars = 1
       seq: seq,
       total: numChunks,
       mime: mime,
-      caption: seq === numChunks ? caption : undefined,
+      caption: seq === numChunks ? cleanCaption : undefined,
       animated: seq === numChunks ? animated : undefined,
-      data: part
+      data: parts[seq - 1]
     });
   }
   return payloads;
@@ -148,36 +160,28 @@ async function runExpandedTests() {
   console.log('Test 5 (Image Payload Encrypt/Decrypt):', test5Passed ? 'PASSED' : 'FAILED');
   if (!test5Passed) throw new Error('Image payload mismatch');
 
-  // 6. Agora RTM 32KB Limit Budget Safety Verification
-  // 15 KB binary image = ~20,000 base64 chars
-  const binary15KB = Buffer.alloc(15000, 0xAB);
-  const b64_15KB = binary15KB.toString('base64');
-  const payload15KB = JSON.stringify({
-    v: 1,
-    type: 'image',
-    mime: 'image/webp',
-    src: `data:image/webp;base64,${b64_15KB}`,
-    caption: 'Sample 15KB screenshot'
-  });
-  const enc15KB = await encryptMessage(payload15KB, 'testPass123');
-  const byteLen15KB = Buffer.byteLength(enc15KB, 'utf8');
-  console.log(`Test 6 (15KB Image Encrypted Size): ${byteLen15KB} bytes (Agora limit: 32,768 bytes) -`, byteLen15KB <= 32768 ? 'PASSED' : 'FAILED');
-  if (byteLen15KB > 32768) throw new Error('15KB payload exceeded 32KB limit!');
+  // 6. Scaler Chat 1000-Letter Limit Budget Safety Verification
+  // A 6 KB image (~8,000 base64 chars) should be split into ~19 chunks, every single chunk strictly < 1000 letters
+  const binary6KB = Buffer.alloc(6000, 0xAB);
+  const b64_6KB = binary6KB.toString('base64');
+  const fullDataUrl6KB = `data:image/webp;base64,${b64_6KB}`;
+  const chunks6KB = splitDataIntoChunks(fullDataUrl6KB, 'image/webp', 'Sample 6KB screenshot diagram with caption', false, 420);
 
-  // Verify rejection check for oversized 25KB message
-  const binary25KB = Buffer.alloc(25000, 0xCD);
-  const b64_25KB = binary25KB.toString('base64');
-  const payload25KB = JSON.stringify({
-    v: 1,
-    type: 'image',
-    mime: 'image/webp',
-    src: `data:image/webp;base64,${b64_25KB}`
-  });
-  const enc25KB = await encryptMessage(payload25KB, 'testPass123');
-  const byteLen25KB = Buffer.byteLength(enc25KB, 'utf8');
-  const guardTriggered = byteLen25KB > 32700;
-  console.log(`Test 6b (25KB Image Safety Guard Rejection Check): ${byteLen25KB} bytes > 32,700 -`, guardTriggered ? 'PASSED' : 'FAILED');
-  if (!guardTriggered) throw new Error('Oversized message was not rejected by guard threshold!');
+  let maxChunkEncLen = 0;
+  for (const chunk of chunks6KB) {
+    const enc = await encryptMessage(JSON.stringify(chunk), 'testPass123');
+    if (enc.length > maxChunkEncLen) maxChunkEncLen = enc.length;
+  }
+  const test6Passed = maxChunkEncLen <= 950 && maxChunkEncLen < 1000;
+  console.log(`Test 6 (Chunk Encrypted Size under 1000-letter limit): max ${maxChunkEncLen} chars (Limit: 1,000 letters) -`, test6Passed ? 'PASSED' : 'FAILED');
+  if (!test6Passed) throw new Error(`Chunk exceeded 1000-letter limit! Max length: ${maxChunkEncLen}`);
+
+  // Verify rejection check for oversized message (> 980 chars)
+  const oversizedPlaintext = 'A'.repeat(800);
+  const encOversized = await encryptMessage(oversizedPlaintext, 'testPass123');
+  const guardTriggered = encOversized.length > 980;
+  console.log(`Test 6b (1000-letter Guard Check): ${encOversized.length} letters > 980 -`, guardTriggered ? 'PASSED' : 'FAILED');
+  if (!guardTriggered) throw new Error('Oversized message was not detected by 980 guard threshold!');
 
   // 7. Animated GIF Detection
   // GIF89a with 2 Graphic Control Extension blocks (0x21 0xF9)
@@ -195,24 +199,26 @@ async function runExpandedTests() {
   console.log('Test 7 (Animated GIF Byte Detection):', test7Passed ? 'PASSED' : 'FAILED');
   if (!test7Passed) throw new Error('GIF detection failed');
 
-  // 8. Multi-Chunk Splitting and Reassembly
-  const largeMockData = Buffer.alloc(45000, 0x55).toString('base64');
+  // 8. Multi-Chunk Splitting and Reassembly (<1000-letter compliant)
+  const largeMockData = Buffer.alloc(15000, 0x55).toString('base64');
   const fullDataUrl = `data:image/gif;base64,${largeMockData}`;
-  const chunks = splitDataIntoChunks(fullDataUrl, 'image/gif', 'Funny reaction GIF', true, 18000);
-  console.log(`Test 8 (Multi-Chunk Split): Split 45KB into ${chunks.length} chunks`);
+  const chunks = splitDataIntoChunks(fullDataUrl, 'image/gif', 'Funny reaction GIF 🎉', true, 420);
+  console.log(`Test 8 (Multi-Chunk Split): Split ${largeMockData.length} b64 chars into ${chunks.length} chunks`);
 
   // Simulate encrypting, transmitting, and assembling
   let reassembledData = '';
+  let allUnder1000 = true;
   for (const chunk of chunks) {
     const encChunk = await encryptMessage(JSON.stringify(chunk), 'chunkKey1');
+    if (encChunk.length > 1000) allUnder1000 = false;
     const match = /🔒\[ENC:v1:([0-9a-fA-F]{8}):([A-Za-z0-9+/=]+)\]/.exec(encChunk);
     const decChunkStr = await decryptPayload(match[2], 'chunkKey1');
     const decChunkObj = JSON.parse(decChunkStr);
     reassembledData += decChunkObj.data;
   }
-  const test8Passed = reassembledData === largeMockData;
-  console.log('Test 8 (Multi-Chunk Reassembly Match):', test8Passed ? 'PASSED' : 'FAILED');
-  if (!test8Passed) throw new Error('Multi-chunk reassembly mismatch');
+  const test8Passed = reassembledData === largeMockData && allUnder1000;
+  console.log('Test 8 (Multi-Chunk Reassembly Match & All <1000 Chars):', test8Passed ? 'PASSED' : 'FAILED');
+  if (!test8Passed) throw new Error('Multi-chunk reassembly mismatch or chunk exceeded 1000 letters');
 
   // 9. Caption XSS Safety
   const evilCaption = '<script>alert("hacked")</script>&"\'';

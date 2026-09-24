@@ -325,7 +325,7 @@
   }
 
   // --- GIF & IMAGE ADAPTIVE COMPRESSION ENGINE ---
-  const TARGET_IMAGE_BYTES = 15000; // ~15 KB safe target for 1 single message
+  const TARGET_IMAGE_BYTES = 6000; // ~6 KB target for fast transmission (<1000 letters per chunk)
 
   function isAnimatedGifBytes(arrayBuffer) {
     const bytes = new Uint8Array(arrayBuffer);
@@ -349,7 +349,7 @@
         img.onload = () => {
           let origWidth = img.naturalWidth || img.width || 600;
           let origHeight = img.naturalHeight || img.height || 400;
-          let maxDim = 850;
+          let maxDim = 720;
           let curWidth = origWidth;
           let curHeight = origHeight;
 
@@ -433,17 +433,29 @@
     });
   }
 
-  function splitDataIntoChunks(dataUrl, mime, caption, animated, maxChunkChars = 19000) {
+  function splitDataIntoChunks(dataUrl, mime, caption, animated, maxChunkChars = 420) {
     const commaIdx = dataUrl.indexOf(',');
     const b64Data = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
-    const totalLen = b64Data.length;
-    const numChunks = Math.ceil(totalLen / maxChunkChars);
-    const chunkId = 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    const chunkId = 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+
+    const cleanCaption = caption ? caption.trim() : undefined;
+    const parts = [];
+    for (let i = 0; i < b64Data.length; i += maxChunkChars) {
+      parts.push(b64Data.substring(i, i + maxChunkChars));
+    }
+
+    // If final part plus caption would risk pushing JSON length over 600, split the final part
+    if (parts.length > 0 && cleanCaption && (parts[parts.length - 1].length + cleanCaption.length > 440)) {
+      const lastPart = parts.pop();
+      const half = Math.ceil(lastPart.length / 2);
+      parts.push(lastPart.substring(0, half));
+      parts.push(lastPart.substring(half));
+    }
+
+    const numChunks = parts.length;
     const payloads = [];
 
     for (let seq = 1; seq <= numChunks; seq++) {
-      const start = (seq - 1) * maxChunkChars;
-      const part = b64Data.substring(start, start + maxChunkChars);
       payloads.push({
         v: 1,
         type: 'image_chunk',
@@ -451,9 +463,9 @@
         seq: seq,
         total: numChunks,
         mime: mime,
-        caption: seq === numChunks ? caption : undefined,
+        caption: seq === numChunks ? cleanCaption : undefined,
         animated: seq === numChunks ? animated : undefined,
-        data: part
+        data: parts[seq - 1]
       });
     }
     return payloads;
@@ -470,19 +482,20 @@
     for (let i = 0; i < payloadList.length; i++) {
       const plaintext = typeof payloadList[i] === 'string' ? payloadList[i] : JSON.stringify(payloadList[i]);
       const encrypted = await encryptText(plaintext, prof.key);
-      const byteLen = new Blob([encrypted]).size;
-      if (byteLen > 32700) {
-        showToast('⚠️ Chunk exceeds 32KB Agora limit. Sending aborted.');
+      if (encrypted.length > 980) {
+        showToast(`⚠️ Message chunk exceeds 1000 letter limit (${encrypted.length} letters). Aborted.`);
         return;
       }
 
       setReactInputValue(textarea, encrypted);
-      await new Promise(r => setTimeout(r, 60));
+      await new Promise(r => setTimeout(r, 70));
       triggerSendMessage(textarea);
 
       if (i < payloadList.length - 1) {
         showToast(`Sending part ${i + 1} of ${payloadList.length}...`, 1000);
-        await new Promise(r => setTimeout(r, 140));
+        await new Promise(r => setTimeout(r, 220));
+      } else if (payloadList.length > 1) {
+        showToast(`✅ Sent all ${payloadList.length} encrypted parts!`, 2000);
       }
     }
   }
@@ -507,8 +520,9 @@
 
     const kbSize = (mediaObj.binaryBytes / 1024).toFixed(1);
     const isGif = !!mediaObj.isAnimatedGif;
-    const requiresChunks = mediaObj.binaryBytes > TARGET_IMAGE_BYTES;
-    const isVeryLargeGif = isGif && mediaObj.binaryBytes > 75000;
+    const b64Data = mediaObj.dataUrl.includes(',') ? mediaObj.dataUrl.substring(mediaObj.dataUrl.indexOf(',') + 1) : mediaObj.dataUrl;
+    const estChunks = Math.max(1, Math.ceil(b64Data.length / 420));
+    const isVeryLargeGif = isGif && mediaObj.binaryBytes > 35000;
 
     stageBox.innerHTML = `
       <div class="scaler-enc-stage-main">
@@ -520,20 +534,20 @@
             <span class="scaler-enc-stage-title">${isGif ? 'Animated GIF' : 'Image ready to send'}</span>
             ${isGif ? '<span class="scaler-enc-badge scaler-enc-badge-gif">GIF</span>' : ''}
             <span class="scaler-enc-badge scaler-enc-badge-size">${kbSize} KB</span>
-            ${requiresChunks ? '<span class="scaler-enc-badge scaler-enc-badge-chunk">Multi-chunk</span>' : '<span class="scaler-enc-badge scaler-enc-badge-size" style="color: #38bdf8;">Single msg</span>'}
+            <span class="scaler-enc-badge scaler-enc-badge-chunk">${estChunks} part${estChunks > 1 ? 's' : ''} (&lt;1000 letters)</span>
           </div>
-          <input type="text" class="scaler-enc-stage-caption-input" placeholder="Add a caption... (optional)" />
+          <input type="text" class="scaler-enc-stage-caption-input" placeholder="Add a caption... (optional)" maxlength="120" />
         </div>
       </div>
       ${isVeryLargeGif ? `
         <div class="scaler-enc-stage-warning">
-          <span>⚠️ GIF is large (${kbSize} KB). Recommend sending 1st frame as static image.</span>
+          <span>⚠️ GIF is large (${kbSize} KB • ~${estChunks} parts). Recommend sending 1st frame as static image.</span>
           <button id="scaler-enc-stage-frame-btn">Send 1st Frame</button>
         </div>
       ` : ''}
       <div class="scaler-enc-stage-actions">
         <button class="scaler-enc-stage-send-btn" id="scaler-enc-stage-send-btn">
-          🔒 Encrypt & Send ${isGif ? 'GIF' : 'Image'}
+          🔒 Encrypt & Send ${isGif ? 'GIF' : 'Image'} (${estChunks} part${estChunks > 1 ? 's' : ''})
         </button>
         <button class="scaler-enc-stage-cancel-btn" id="scaler-enc-stage-cancel-btn">✕ Cancel</button>
       </div>
@@ -581,28 +595,18 @@
 
       if (!currentMedia) return;
 
-      if (currentMedia.binaryBytes <= TARGET_IMAGE_BYTES) {
-        // Single message
-        const payload = {
-          v: 1,
-          type: 'image',
-          mime: currentMedia.mime,
-          src: currentMedia.dataUrl,
-          caption: caption || undefined,
-          animated: !!currentMedia.isAnimatedGif
-        };
-        await sendEncryptedPayloads([payload], textarea);
+      const chunks = splitDataIntoChunks(
+        currentMedia.dataUrl,
+        currentMedia.mime,
+        caption,
+        !!currentMedia.isAnimatedGif
+      );
+      if (chunks.length > 1) {
+        showToast(`Sending in ${chunks.length} encrypted parts (<1000 letters each)...`);
       } else {
-        // Multi-chunk message
-        const chunks = splitDataIntoChunks(
-          currentMedia.dataUrl,
-          currentMedia.mime,
-          caption,
-          !!currentMedia.isAnimatedGif
-        );
-        showToast(`Sending in ${chunks.length} encrypted parts...`);
-        await sendEncryptedPayloads(chunks, textarea);
+        showToast('Sending encrypted image...');
       }
+      await sendEncryptedPayloads(chunks, textarea);
     });
   }
 
@@ -859,10 +863,20 @@
       return;
     }
 
+    // Text messages: if length > 500 characters, auto-split into safe parts (<1000 letters encrypted)
+    if (text.length > 500) {
+      const parts = [];
+      for (let i = 0; i < text.length; i += 500) {
+        parts.push(text.substring(i, i + 500));
+      }
+      showToast(`Splitting message into ${parts.length} parts (<1000 letters each)...`, 1500);
+      await sendEncryptedPayloads(parts, textarea);
+      return;
+    }
+
     const encrypted = await encryptText(text, prof.key);
-    const byteLen = new Blob([encrypted]).size;
-    if (byteLen > 32700) {
-      showToast(`⚠️ Message too long (${byteLen} bytes). Max is 32KB. Please shorten.`);
+    if (encrypted.length > 980) {
+      showToast(`⚠️ Message too long (${encrypted.length} letters). Max is 1000 letters. Please shorten.`);
       return;
     }
 
@@ -953,11 +967,11 @@
         id,
         total,
         chunks: new Map(),
+        containers: new Map(),
         mime: mime || 'image/webp',
         caption: caption || '',
         animated: !!animated,
         profile,
-        container,
         createdAt: Date.now()
       };
       chunkBuffer.set(id, entry);
@@ -969,15 +983,35 @@
     }
 
     entry.chunks.set(seq, data);
+    if (container) {
+      entry.containers.set(seq, container);
+    }
     if (mime) entry.mime = mime;
     if (caption) entry.caption = caption;
     if (animated !== undefined) entry.animated = animated;
+
+    // Hide earlier sequence message bubbles to keep chat clean while receiving
+    for (const [s, c] of entry.containers.entries()) {
+      if (s !== seq && c) {
+        const msgWrap = c.closest('[data-cy="meetings-chat-message"]') || c.closest('.chat-message');
+        if (msgWrap) msgWrap.style.display = 'none';
+      }
+    }
 
     if (entry.chunks.size >= total) {
       let fullBase64 = '';
       for (let s = 1; s <= total; s++) {
         fullBase64 += entry.chunks.get(s) || '';
       }
+
+      // Hide all other chunk containers so only the final complete image card is displayed
+      for (const [s, c] of entry.containers.entries()) {
+        if (c && c !== container) {
+          const msgWrap = c.closest('[data-cy="meetings-chat-message"]') || c.closest('.chat-message');
+          if (msgWrap) msgWrap.style.display = 'none';
+        }
+      }
+
       chunkBuffer.delete(id);
       const dataUrl = `data:${entry.mime};base64,${fullBase64}`;
       return {

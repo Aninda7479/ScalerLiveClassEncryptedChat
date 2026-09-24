@@ -138,16 +138,13 @@ const simulationScript = `
 
     document.getElementById('sim-image-btn').addEventListener('click', async () => {
       const dataUrl = createSyntheticDataUrl('Binary Search Tree: O(log N)', '#38bdf8', '#0f172a');
-      const payload = JSON.stringify({
-        v: 1,
-        type: 'image',
-        mime: 'image/png',
-        src: dataUrl,
-        caption: 'Look at the BST time complexity diagram!',
-        animated: false
-      });
-      const enc = await window.scalerEncryptTextTest(payload, 'SST2030@Aninda');
-      appendMockMessage('Aninda (SST)', enc, false);
+      const chunks = window.scalerSplitChunksTest ? window.scalerSplitChunksTest(dataUrl, 'image/png', 'Look at the BST time complexity diagram!', false, 420) : [];
+      for (let i = 0; i < chunks.length; i++) {
+        const enc = await window.scalerEncryptTextTest(JSON.stringify(chunks[i]), 'SST2030@Aninda');
+        setTimeout(() => {
+          appendMockMessage('Aninda (SST)', enc, false);
+        }, i * 200);
+      }
     });
 
     document.getElementById('sim-gif-btn').addEventListener('click', async () => {
@@ -193,8 +190,8 @@ const simulationScript = `
 </script>
 `;
 
-// Expose a test helper in the user script
-const modifiedScript = scriptContent + '\nwindow.scalerEncryptTextTest = encryptText;\n';
+// Expose test helpers in the user script
+const modifiedScript = scriptContent + '\nwindow.scalerEncryptTextTest = encryptText;\nwindow.scalerSplitChunksTest = splitDataIntoChunks;\n';
 
 // Insert simulation scripts right before </body>
 html = html.replace('</body>', simulationScript + '\n<script>\n' + modifiedScript + '\n</script>\n</body>');
