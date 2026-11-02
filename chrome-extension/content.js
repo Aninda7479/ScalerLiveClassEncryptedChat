@@ -54,6 +54,14 @@
     );
   }
 
+  const MESSAGE_MODE = {
+    ENCRYPTED: 'encrypted',
+    PLAINTEXT: 'plaintext'
+  };
+
+  let currentMessageMode = MESSAGE_MODE.ENCRYPTED;
+  let isToggling = false;
+
   async function encryptText(plaintext, password) {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -302,6 +310,65 @@
     }
   }
 
+  // Plaintext mode uses a single native action (never Enter *and* a click,
+  // which risks submitting the same message twice).
+  function sendNativeMessage(textarea) {
+    const sendBtn = textarea.closest('.chat-input')?.querySelector('.icon-send')?.closest('a, button');
+
+    if (
+      sendBtn &&
+      !sendBtn.hasAttribute('disabled') &&
+      sendBtn.getAttribute('aria-disabled') !== 'true'
+    ) {
+      sendBtn.click();
+      return;
+    }
+
+    ['keydown', 'keyup'].forEach(type => {
+      textarea.dispatchEvent(new KeyboardEvent(type, {
+        key: 'Enter',
+        code: 'Enter',
+        keyCode: 13,
+        which: 13,
+        bubbles: true,
+        cancelable: true
+      }));
+    });
+  }
+
+  function findNativeFileInput(textarea) {
+    const chat = textarea.closest('.chat-input') || textarea.closest('.chat-input__field');
+    const scope = chat || document;
+    return Array.from(scope.querySelectorAll('input[type="file"]'))
+      .find(input => !input.classList.contains('scaler-enc-hidden-file-input')) || null;
+  }
+
+  // Hands the untouched original file (so animated GIFs stay animated) to
+  // Scaler's own uploader. Never pastes file data into the chat as text.
+  async function sendNativeImage(rawFile, textarea) {
+    if (!rawFile) {
+      showToast('Original file unavailable for plaintext upload. Use Encrypted mode.');
+      return false;
+    }
+
+    const nativeInput = findNativeFileInput(textarea);
+    if (!nativeInput) {
+      showToast('Scaler image upload not found. Use Encrypted mode to send this image.');
+      return false;
+    }
+
+    try {
+      const transfer = new DataTransfer();
+      transfer.items.add(rawFile);
+      nativeInput.files = transfer.files;
+      nativeInput.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    } catch (error) {
+      showToast('Plaintext image upload failed. Use Encrypted mode instead.');
+      return false;
+    }
+  }
+
   // --- FLOATING MENU (Mounted to body, completely immune to parent overflow) ---
   let floatingMenu = null;
 
@@ -371,6 +438,78 @@
     toast.innerHTML = `<span>${escapeHtml(msg)}</span>`;
     document.body.appendChild(toast);
     setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
+  }
+
+  // --- MESSAGING MODE TOGGLE ---
+  function toggleMessageMode() {
+    if (isToggling) return;
+    isToggling = true;
+
+    currentMessageMode =
+      currentMessageMode === MESSAGE_MODE.ENCRYPTED
+        ? MESSAGE_MODE.PLAINTEXT
+        : MESSAGE_MODE.ENCRYPTED;
+
+    updateMessageModeUI();
+
+    showToast(
+      currentMessageMode === MESSAGE_MODE.ENCRYPTED
+        ? '🔒 Encryption enabled'
+        : '🔓 Plaintext mode enabled'
+    );
+
+    // Reset the flag after a short delay to prevent rapid toggling
+    setTimeout(() => { isToggling = false; }, 300);
+  }
+
+  function updateMessageModeUI() {
+    const encrypted =
+      currentMessageMode === MESSAGE_MODE.ENCRYPTED;
+
+    const indicator = document.querySelector('.scaler-enc-mode-indicator');
+    if (indicator) {
+      indicator.textContent = encrypted
+        ? '🔒 Encrypted'
+        : '🔓 Plaintext';
+
+      // The stylesheet styles these two classes differently, so both must be
+      // kept in sync with the current mode (not just the data attribute).
+      indicator.classList.toggle('encrypted', encrypted);
+      indicator.classList.toggle('plaintext', !encrypted);
+      indicator.dataset.mode = currentMessageMode;
+      indicator.setAttribute(
+        'aria-label',
+        `Current messaging mode: ${currentMessageMode}`
+      );
+    }
+
+    updateStagedMediaLabels();
+  }
+
+  function setupModeKeyboardShortcut(textarea) {
+    if (textarea.dataset.modeShortcutBound === 'true') return;
+
+    textarea.dataset.modeShortcutBound = 'true';
+
+    textarea.addEventListener('keydown', (event) => {
+      // Only activate when user explicitly presses Tab (not Shift+Tab)
+      if (event.key !== 'Tab') return;
+
+      // Preserve normal reverse keyboard navigation (Shift+Tab)
+      if (event.shiftKey) return;
+
+      // Don't interfere with IME composition (Safari/older Chrome use keyCode 229)
+      if (event.isComposing || event.keyCode === 229) return;
+
+      if (
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey
+      ) return;
+
+      event.preventDefault();
+      toggleMessageMode();
+    });
   }
 
   // --- GIF & IMAGE ADAPTIVE COMPRESSION ENGINE ---
@@ -552,6 +691,44 @@
   // --- MEDIA STAGING & SENDING UI ---
   let pendingStagedMedia = null;
 
+  // Any send action started within this window is treated as a double-submit.
+  // Chunked sends call sendEncryptedPayloads() directly, so they are unaffected.
+  let sendInFlightUntil = 0;
+
+  function beginSendAction() {
+    const now = Date.now();
+    if (now < sendInFlightUntil) return false;
+    sendInFlightUntil = now + 400;
+    return true;
+  }
+
+  function stageSendLabel(isGif, estChunks) {
+    const type = isGif ? 'GIF' : 'Image';
+    if (currentMessageMode === MESSAGE_MODE.ENCRYPTED) {
+      const parts = `${estChunks} part${estChunks > 1 ? 's' : ''}`;
+      return `🔒 Encrypt & Send ${type} (${parts})`;
+    }
+    return `📎 Send ${type} (plaintext)`;
+  }
+
+  function updateStagedMediaLabels() {
+    const sendBtn = document.getElementById('scaler-enc-stage-send-btn');
+    if (sendBtn && sendBtn.dataset.estChunks) {
+      sendBtn.textContent = stageSendLabel(
+        sendBtn.dataset.isGif === 'true',
+        Number(sendBtn.dataset.estChunks)
+      );
+    }
+
+    const chunkBadge = document.getElementById('scaler-enc-stage-chunk-badge');
+    if (chunkBadge && chunkBadge.dataset.estChunks) {
+      const parts = Number(chunkBadge.dataset.estChunks);
+      chunkBadge.textContent = currentMessageMode === MESSAGE_MODE.ENCRYPTED
+        ? `${parts} part${parts > 1 ? 's' : ''} (<1000 letters)`
+        : 'Native upload';
+    }
+  }
+
   function clearStagedMedia() {
     pendingStagedMedia = null;
     const existing = document.querySelector('.scaler-enc-image-stage');
@@ -583,7 +760,7 @@
             <span class="scaler-enc-stage-title">${isGif ? 'Animated GIF' : 'Image ready to send'}</span>
             ${isGif ? '<span class="scaler-enc-badge scaler-enc-badge-gif">GIF</span>' : ''}
             <span class="scaler-enc-badge scaler-enc-badge-size">${kbSize} KB</span>
-            <span class="scaler-enc-badge scaler-enc-badge-chunk">${estChunks} part${estChunks > 1 ? 's' : ''} (&lt;1000 letters)</span>
+            <span class="scaler-enc-badge scaler-enc-badge-chunk" id="scaler-enc-stage-chunk-badge" data-est-chunks="${estChunks}">${estChunks} part${estChunks > 1 ? 's' : ''} (&lt;1000 letters)</span>
           </div>
           <input type="text" class="scaler-enc-stage-caption-input" placeholder="Add a caption... (optional)" maxlength="120" />
         </div>
@@ -595,8 +772,8 @@
         </div>
       ` : ''}
       <div class="scaler-enc-stage-actions">
-        <button class="scaler-enc-stage-send-btn" id="scaler-enc-stage-send-btn">
-          🔒 Encrypt & Send ${isGif ? 'GIF' : 'Image'} (${estChunks} part${estChunks > 1 ? 's' : ''})
+        <button class="scaler-enc-stage-send-btn" id="scaler-enc-stage-send-btn" data-is-gif="${isGif}" data-est-chunks="${estChunks}">
+          ${stageSendLabel(isGif, estChunks)}
         </button>
         <button class="scaler-enc-stage-cancel-btn" id="scaler-enc-stage-cancel-btn">✕ Cancel</button>
       </div>
@@ -643,19 +820,34 @@
       clearStagedMedia();
 
       if (!currentMedia) return;
+      if (!beginSendAction()) return;
 
-      const chunks = splitDataIntoChunks(
-        currentMedia.dataUrl,
-        currentMedia.mime,
-        caption,
-        !!currentMedia.isAnimatedGif
-      );
-      if (chunks.length > 1) {
-        showToast(`Sending in ${chunks.length} encrypted parts (<1000 letters each)...`);
-      } else {
-        showToast('Sending encrypted image...');
+      // Route based on current messaging mode
+      if (currentMessageMode === MESSAGE_MODE.ENCRYPTED) {
+        const chunks = splitDataIntoChunks(
+          currentMedia.dataUrl,
+          currentMedia.mime,
+          caption,
+          !!currentMedia.isAnimatedGif
+        );
+        if (chunks.length > 1) {
+          showToast(`Sending in ${chunks.length} encrypted parts (<1000 letters each)...`);
+        } else {
+          showToast('Sending encrypted image...');
+        }
+        await sendEncryptedPayloads(chunks, textarea);
+        return;
       }
-      await sendEncryptedPayloads(chunks, textarea);
+
+      // Plaintext mode: upload the original file through Scaler's own picker.
+      showToast('Sending image natively...');
+      const uploaded = await sendNativeImage(currentMedia.rawFile, textarea);
+      if (uploaded && caption) {
+        await new Promise(r => setTimeout(r, 150));
+        setReactInputValue(textarea, caption);
+        await new Promise(r => setTimeout(r, 70));
+        sendNativeMessage(textarea);
+      }
     });
   }
 
@@ -692,7 +884,8 @@
         width: compressed.width,
         height: compressed.height,
         mime: compressed.mime,
-        isAnimatedGif: false
+        isAnimatedGif: false,
+        rawFile: file
       }, textarea);
     } catch (e) {
       alert('Failed to process image: ' + e.message);
@@ -770,6 +963,9 @@
           <span id="scaler-enc-current-name">${activeProf ? escapeHtml(activeProf.name) : 'Keys'}</span>
           <span style="font-size: 8px; opacity: 0.7;">▾</span>
         </div>
+        <div class="scaler-enc-mode-indicator ${currentMessageMode}" id="scaler-enc-mode-indicator" title="Toggle messaging mode (Tab also toggles)">
+          ${currentMessageMode === MESSAGE_MODE.ENCRYPTED ? '🔒 Encrypted' : '🔓 Plaintext'}
+        </div>
       `;
 
       const pill = wrapper.querySelector('#scaler-enc-pill-btn');
@@ -802,6 +998,15 @@
         }
       });
 
+      const modeIndicator = wrapper.querySelector('#scaler-enc-mode-indicator');
+      if (modeIndicator) {
+        modeIndicator.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleMessageMode();
+        });
+      }
+
       const rightArea = chatControls.querySelector('.chat-input__controls-right');
       if (rightArea) {
         rightArea.appendChild(wrapper);
@@ -829,6 +1034,9 @@
         });
         chatInputField.appendChild(fileInput);
       }
+
+      // Mode keyboard shortcut (Tab to toggle)
+      setupModeKeyboardShortcut(textarea);
 
       // Attachment button (📷)
       const attachBtn = document.createElement('a');
@@ -904,7 +1112,17 @@
 
     const text = textarea.value.trim();
     if (!text) return;
+    if (!beginSendAction()) return;
 
+    // Route based on current messaging mode
+    if (currentMessageMode === MESSAGE_MODE.ENCRYPTED) {
+      return handleEncryptAndSendEncrypted(textarea, text);
+    }
+
+    return handlePlaintextSend(textarea);
+  }
+
+  async function handleEncryptAndSendEncrypted(textarea, text) {
     const prof = getActiveProfile();
     if (!prof) {
       alert('Please select or create a key profile first!');
@@ -934,6 +1152,15 @@
     setTimeout(() => {
       triggerSendMessage(textarea);
     }, 40);
+  }
+
+  async function handlePlaintextSend(textarea) {
+    try {
+      sendNativeMessage(textarea);
+    } catch (error) {
+      showToast('Failed to send message. Please retry.');
+      throw error;
+    }
   }
 
   // --- AUTOMATIC LIVE DECRYPTION (AUTO-DETECT DEFAULT & SAVED KEYS) ---
@@ -1006,15 +1233,29 @@
   // --- MULTI-CHUNK IMAGE ASSEMBLER ---
   const chunkBuffer = new Map();
 
+  const MAX_IMAGE_CHUNKS = 500;
+
   function handleIncomingImageChunk(chunk, profile, rawToken, container) {
     const { id, seq, total, data, mime, caption, animated } = chunk;
-    if (!id || !seq || !total || !data) return { complete: false, progress: 'Invalid chunk' };
+
+    // Validate before touching the buffer: sequence numbers must be integers
+    // inside [1, total] and data must be base64, otherwise a stray or hostile
+    // chunk could mark an image complete while parts are still missing.
+    const seqNum = Number(seq);
+    const totalNum = Number(total);
+    const isValidSeq = Number.isInteger(seqNum) && Number.isInteger(totalNum) &&
+      seqNum >= 1 && totalNum >= 1 && seqNum <= totalNum && totalNum <= MAX_IMAGE_CHUNKS;
+    const isValidData = typeof data === 'string' && data.length > 0 && /^[A-Za-z0-9+/=]+$/.test(data);
+
+    if (!id || typeof id !== 'string' || !isValidSeq || !isValidData) {
+      return { complete: false, progress: 'Invalid chunk' };
+    }
 
     let entry = chunkBuffer.get(id);
     if (!entry) {
       entry = {
         id,
-        total,
+        total: totalNum,
         chunks: new Map(),
         containers: new Map(),
         mime: mime || 'image/webp',
@@ -1031,26 +1272,41 @@
       }, 60000);
     }
 
-    entry.chunks.set(seq, data);
-    if (container) {
-      entry.containers.set(seq, container);
+    // A later chunk cannot legitimately extend a sequence started with a
+    // different total, and only image MIME types may reach the data URL.
+    if (seqNum > entry.total) {
+      return { complete: false, progress: 'Invalid chunk' };
     }
-    if (mime) entry.mime = mime;
+
+    entry.chunks.set(seqNum, data);
+    if (container) {
+      entry.containers.set(seqNum, container);
+    }
+    if (mime && /^image\/[a-z0-9.+-]+$/i.test(mime)) entry.mime = mime;
     if (caption) entry.caption = caption;
     if (animated !== undefined) entry.animated = animated;
 
     // Hide earlier sequence message bubbles to keep chat clean while receiving
     for (const [s, c] of entry.containers.entries()) {
-      if (s !== seq && c) {
+      if (s !== seqNum && c) {
         const msgWrap = c.closest('[data-cy="meetings-chat-message"]') || c.closest('.chat-message');
         if (msgWrap) msgWrap.style.display = 'none';
       }
     }
 
-    if (entry.chunks.size >= total) {
+    // Every part 1..total must be present (not merely the same count).
+    let hasAllParts = true;
+    for (let s = 1; s <= entry.total; s++) {
+      if (!entry.chunks.has(s)) {
+        hasAllParts = false;
+        break;
+      }
+    }
+
+    if (hasAllParts) {
       let fullBase64 = '';
-      for (let s = 1; s <= total; s++) {
-        fullBase64 += entry.chunks.get(s) || '';
+      for (let s = 1; s <= entry.total; s++) {
+        fullBase64 += entry.chunks.get(s);
       }
 
       // Hide all other chunk containers so only the final complete image card is displayed
@@ -1078,7 +1334,7 @@
 
     return {
       complete: false,
-      progress: `Receiving image... (${entry.chunks.size}/${total} parts)`
+      progress: `Receiving image... (${entry.chunks.size}/${entry.total} parts)`
     };
   }
 
@@ -1816,6 +2072,7 @@
     setupStorageSync();
     registerUserscriptMenuCommands();
     setupLiveObserver();
+    updateMessageModeUI();
   }
 
   // Expose test helpers for offline testbed safely inside the scope
