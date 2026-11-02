@@ -9,8 +9,10 @@ function buildUserscript() {
   const outPath = path.join(rootDir, 'scaler-encrypted-chat.user.js');
 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  const cssContent = fs.readFileSync(cssPath, 'utf8');
-  const jsContent = fs.readFileSync(jsPath, 'utf8');
+  // Normalize line endings so the generated userscript is byte-identical
+  // regardless of the platform / core.autocrlf setting.
+  const cssContent = fs.readFileSync(cssPath, 'utf8').replace(/\r\n/g, '\n');
+  const jsContent = fs.readFileSync(jsPath, 'utf8').replace(/\r\n/g, '\n');
 
   const version = manifest.version || '1.4.0';
   const author = manifest.author || 'Aninda';

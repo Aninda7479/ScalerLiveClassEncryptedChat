@@ -117,6 +117,36 @@
   font-weight: 600 !important;
 }
 
+/* Mode Indicator */
+.scaler-enc-mode-indicator {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 3px 8px !important;
+  border-radius: 14px !important;
+  background: rgba(100, 116, 139, 0.15) !important;
+  color: #f1f5f9 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  margin-left: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+}
+
+/* Mode Indicator - Encrypted */
+.scaler-enc-mode-indicator.encrypted {
+  background: rgba(2, 132, 199, 0.2) !important;
+  color: #0284c7 !important;
+}
+
+/* Mode Indicator - Plaintext */
+.scaler-enc-mode-indicator.plaintext {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #f59e0b !important;
+}
+
 /* Lock Send Button */
 .scaler-enc-lock-btn {
   display: inline-flex !important;
